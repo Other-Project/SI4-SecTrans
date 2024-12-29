@@ -15,10 +15,11 @@ int main(int argc, char **argv)
 	// signal(SIGINT, stopServer);
 	startserver(SERVER_PORT);
 
-	char buffer[MAX_MSG_LENGTH];
-	while (!getmsg(buffer))
+	MESSAGE *message;
+	while ((message = read_full_message()))
 	{
-		printf("Received: %s\n", buffer);
+		printf("Received [%c]: %s\n", message->action_type, message->content);
+		free(message);
 	}
 	return 0;
 }

@@ -1,17 +1,25 @@
+#include <assert.h>
 #include "common.h"
+#include "message.h"
 
 /* send message (maximum size: 1024 bytes) */
-int sndmsg(char msg[MAX_MSG_LENGTH], int port);
+int sndmsg(char msg[MAX_PACKET_LENGTH], int port);
 
-int safe_send_message(char *msg, int port)
+int safe_send_message(ACTION_TYPE action_type, char *msg, int port)
 {
-    char buffer[MAX_MSG_LENGTH];
-    int status = 0;
-    for (char *msg_ptr = msg;; msg_ptr += MAX_MSG_LENGTH)
+    assert(sizeof(PACKET) <= MAX_PACKET_LENGTH);
+
+    char buffer[sizeof(PACKET)];
+    PACKET packet;
+    packet.action_type = action_type;
+    int hasError = 0;
+    for (char *msg_ptr = msg;; msg_ptr += sizeof(packet.content))
     {
-        char *buffer_last_written = stpncpy(buffer, msg_ptr, MAX_MSG_LENGTH);
-        if ((status = sndmsg(buffer, port)) || buffer_last_written != &buffer[MAX_MSG_LENGTH])
+        char *buffer_last_written = stpncpy(packet.content, msg_ptr, sizeof(packet.content));
+        memcpy(buffer, &packet, sizeof(PACKET));
+        hasError = sndmsg(buffer, port);
+        if (hasError || buffer_last_written != &packet.content[sizeof(packet.content)])
             break;
     }
-    return status;
+    return hasError;
 }
