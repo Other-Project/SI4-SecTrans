@@ -14,12 +14,13 @@ void stopServer(int _)
 
 void handle_upload_message(MESSAGE *message)
 {
-	LOG("Received upload request: %s\n", message->content);
+	LOG("Received upload request for file: %s\n", message->filename);
+	TRACE("\t%s\n", message->content);
 }
 
 void handle_download_message(MESSAGE *message)
 {
-	LOG("Received download request for file %s\n", message->content);
+	LOG("Received download request for file: %s\n", message->filename);
 }
 
 void handle_list_message(MESSAGE *message)

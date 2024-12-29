@@ -20,11 +20,9 @@ MESSAGE *upload_message(char filename[])
 
 MESSAGE *download_message(char filename[])
 {
-    char content[] = "";
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + sizeof(content));
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE));
     msg->action_type = DOWNLOAD;
     strcpy(msg->filename, filename);
-    strcpy(msg->content, content);
     return msg;
 }
 
@@ -32,6 +30,7 @@ MESSAGE *list_message()
 {
     MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE));
     msg->action_type = LIST;
+    msg->filename[0] = '\0';
     return msg;
 }
 

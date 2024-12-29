@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include <assert.h>
+#include <string.h>
 #include "common.h"
 #include "message.h"
 
@@ -43,7 +44,6 @@ MESSAGE *read_full_message()
                 TRACE("Realloc content\n");
             }
             continue;
-
         default:
             ERROR("Received unknown message type %c\n", packet.message_type);
             continue;
@@ -51,6 +51,7 @@ MESSAGE *read_full_message()
 
         msg = (MESSAGE *)realloc(msg, sizeof(*msg) + content_size);
         strcpy(msg->content, content);
+        free(content);
         TRACE("Full message received\n");
         return msg;
     }
