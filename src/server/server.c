@@ -13,6 +13,21 @@ void stopServer(int _)
 	exit(error);
 }
 
+void handle_upload_message(MESSAGE *message)
+{
+	printf("Received upload request: %s\n", message->content);
+}
+
+void handle_download_message(MESSAGE *message)
+{
+	printf("Received download request for file %s\n", message->content);
+}
+
+void handle_list_message(MESSAGE *message)
+{
+	printf("Received list request\n");
+}
+
 int main(int argc, char **argv)
 {
 	printf("Starting server\n");
@@ -22,7 +37,21 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		MESSAGE *message = read_full_message();
-		printf("Received [%c]: %s\n", message->action_type, message->content);
+		switch (message->action_type)
+		{
+		case UPLOAD:
+			handle_upload_message(message);
+			break;
+		case DOWNLOAD:
+			handle_download_message(message);
+			break;
+		case LIST:
+			handle_list_message(message);
+			break;
+		default:
+			printf("Received unknown action type %c\n", message->action_type);
+			break;
+		}
 		free(message);
 	}
 }
