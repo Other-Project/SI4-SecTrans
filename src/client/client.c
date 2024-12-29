@@ -41,17 +41,17 @@ int main(int argc, char *argv[])
     CHECK_ARGS(2, "Missing action argument");
 
     MESSAGE *message;
-    if (!strcmp(argv[1], "-u"))
+    if (!strcmp(argv[1], "-up"))
     {
         CHECK_ARGS(3, "The filename must be provided");
         message = upload_message(argv[2]);
     }
-    else if (!strcmp(argv[1], "-d"))
+    else if (!strcmp(argv[1], "-down"))
     {
         CHECK_ARGS(3, "The filename must be provided");
         message = download_message(argv[2]);
     }
-    else if (!strcmp(argv[1], "-l"))
+    else if (!strcmp(argv[1], "-list"))
         message = list_message();
     else
     {
