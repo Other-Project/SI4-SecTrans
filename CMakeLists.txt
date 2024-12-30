@@ -8,3 +8,18 @@ add_executable(${PROJECT_NAME}_server src/server/server.c)
 add_executable(${PROJECT_NAME}_client src/client/client.c)
 target_link_libraries(${PROJECT_NAME}_client client)
 target_link_libraries(${PROJECT_NAME}_server server)
+
+
+# TESTS
+
+include(CTest)
+include(FetchCMocka.cmake)
+
+add_executable(${PROJECT_NAME}_server_test tests/server.c)
+add_executable(${PROJECT_NAME}_client_test tests/client.c)
+target_link_libraries(${PROJECT_NAME}_server_test PRIVATE cmocka-static)
+target_link_libraries(${PROJECT_NAME}_client_test PRIVATE cmocka-static)
+
+enable_testing()
+add_test(NAME Server COMMAND ${PROJECT_NAME}_server_test)
+add_test(NAME Client COMMAND ${PROJECT_NAME}_client_test)
