@@ -7,10 +7,11 @@ int sndmsg(char msg[MAX_PACKET_LENGTH], int port);
 
 int safe_send_message(MESSAGE *message, int port)
 {
-    assert(sizeof(PACKET) <= MAX_PACKET_LENGTH);
+    assert(sizeof(PACKET) < MAX_PACKET_LENGTH);
 
     PACKET packet;
-    char buffer[sizeof(PACKET)];
+    char buffer[MAX_PACKET_LENGTH];
+    buffer[sizeof(PACKET)] = '\0';
     int hasError = 0;
 
     packet.message_type = INITIALISE;

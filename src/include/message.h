@@ -27,7 +27,7 @@ typedef struct __attribute__((packed))
             ACTION_TYPE action_type;
             char filename[MAX_FILENAME_LENGTH];
         }; // For initialisation phase
-        char content[MAX_PACKET_LENGTH - sizeof(MESSAGE_TYPE)]; // For hand_shake and transfert phases
+        char content[MAX_PACKET_LENGTH - 1 - sizeof(MESSAGE_TYPE)]; // For hand_shake and transfert phases
     };
 } PACKET;
 
