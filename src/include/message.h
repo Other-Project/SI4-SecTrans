@@ -13,25 +13,24 @@ typedef enum __attribute__((packed))
 typedef enum __attribute__((packed))
 {
     HAND_SHAKE = 'H',
-    INITIALISE = 'I',
     TRANSFERT = 'T'
 } MESSAGE_TYPE;
 
 typedef struct __attribute__((packed))
 {
     MESSAGE_TYPE message_type;
-    union
-    {
-        struct
-        {
-            ACTION_TYPE action_type;
-            char filename[MAX_FILENAME_LENGTH];
-        }; // For initialisation phase
-        char content[MAX_PACKET_LENGTH - 1 - sizeof(MESSAGE_TYPE)]; // For hand_shake and transfert phases
-    };
+    unsigned char index;
+    unsigned char count;
+    size_t total_size;
+} PACKET_HEADER;
+
+typedef struct __attribute__((packed))
+{
+    PACKET_HEADER header;
+    char content[MAX_PACKET_LENGTH - 1 - sizeof(PACKET_HEADER)];
 } PACKET;
 
-typedef struct
+typedef struct __attribute__((packed))
 {
     ACTION_TYPE action_type;
     char filename[MAX_FILENAME_LENGTH];

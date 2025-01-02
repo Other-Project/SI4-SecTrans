@@ -13,45 +13,29 @@ int getmsg(char msg_read[MAX_PACKET_LENGTH]);
 MESSAGE *read_full_message()
 {
     PACKET packet;
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE));
-    int content_size = sizeof(packet.content);
-    char *content = malloc(content_size);
-    
-    char *last_char = content;
+    MESSAGE *msg = NULL;
+
+    int packet_received = 0;
     while (!getmsg((char *)&packet))
     {
-        switch (packet.message_type) // For now, the order of arrival of the packets is important
+        switch (packet.header.message_type)
         {
         case HAND_SHAKE:
             TRACE("Received hand shake packet:\n\t%s\n", (char *)&packet);
             continue;
-        case INITIALISE:
-            TRACE("Received initialisation packet: %c %s\n", packet.action_type, packet.filename);
-            msg->action_type = packet.action_type;
-            strcpy(msg->filename, packet.filename);
-            continue;
         case TRANSFERT:
             TRACE("Received transfert packet\n");
-            last_char = stpncpy(last_char, packet.content, sizeof(packet.content));
-            if (last_char - content < content_size)
+            if (!msg)
+                msg = (MESSAGE *)malloc(packet.header.total_size);
+
+            strncpy((char *)&msg + sizeof(packet.content) * packet.header.index, packet.content, sizeof(packet.content));
+            if (++packet_received == packet.header.count)
                 break;
-            else
-            {
-                int i = last_char - content;
-                content_size += sizeof(packet.content);
-                content = realloc(content, content_size);
-                last_char = content + i;
-                TRACE("Realloc content\n");
-            }
             continue;
         default:
-            ERROR("Received unknown message type %c\n", packet.message_type);
+            ERROR("Received unknown message type %c\n", packet.header.message_type);
             continue;
         }
-
-        msg = (MESSAGE *)realloc(msg, sizeof(*msg) + content_size);
-        strcpy(msg->content, content);
-        free(content);
         TRACE("Full message received\n");
         return msg;
     }
