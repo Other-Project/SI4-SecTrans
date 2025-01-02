@@ -27,10 +27,10 @@ typedef struct __attribute__((packed))
 typedef struct __attribute__((packed))
 {
     PACKET_HEADER header;
-    char content[MAX_PACKET_LENGTH - 1 - sizeof(PACKET_HEADER)];
+    char content[MAX_SIZE_BEFORE_B64(MAX_PACKET_LENGTH - 1) - sizeof(PACKET_HEADER)];
 } PACKET;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     ACTION_TYPE action_type;
     char filename[MAX_FILENAME_LENGTH];

@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "binn/binn.h"
+#include "b64.h"
 #include "common.h"
 #include "message.h"
 
@@ -8,7 +8,7 @@ int sndmsg(char msg[MAX_PACKET_LENGTH], int port);
 
 int safe_send_message(MESSAGE *message, int port)
 {
-    assert(sizeof(PACKET) < MAX_PACKET_LENGTH);
+    assert(sizeof(PACKET) <= MAX_SIZE_BEFORE_B64(MAX_PACKET_LENGTH));
 
     PACKET packet;
     packet.header.message_type = TRANSFERT;
@@ -16,15 +16,14 @@ int safe_send_message(MESSAGE *message, int port)
     packet.header.index = 0;
     packet.header.count = CEIL_DIV(packet.header.total_size, sizeof(packet.content));
 
-    char buffer[MAX_PACKET_LENGTH];
-    buffer[sizeof(PACKET)] = '\0';
     int hasError = 0;
-    for (char *msg_ptr = (char *)&message; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content), packet.header.index++)
+    for (char *msg_ptr = (char *)message; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content), packet.header.index++)
     {
         strncpy(packet.content, msg_ptr, sizeof(packet.content));
-        memcpy(buffer, &packet, sizeof(PACKET));
-        TRACE("Sending transfert packet:\n\t%s\n", buffer);
+        char *buffer = b64_encode((unsigned char *)&packet, sizeof(PACKET));
+        TRACE("Sending transfert packet %d/%d\n", packet.header.index + 1, packet.header.count);
         hasError = sndmsg(buffer, port);
+        free(buffer);
     }
     return hasError;
 }

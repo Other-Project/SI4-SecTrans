@@ -23,4 +23,6 @@
 
 #define CEIL_DIV(x, y) ((x) / (y) + ((x) % (y) != 0))
 
+#define MAX_SIZE_BEFORE_B64(size_after) ((size_after) / 4 * 3 - 4)
+
 #endif

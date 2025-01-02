@@ -1,6 +1,7 @@
 #include <malloc.h>
 #include <assert.h>
 #include <string.h>
+#include "b64.h"
 #include "common.h"
 #include "message.h"
 
@@ -12,33 +13,40 @@ int getmsg(char msg_read[MAX_PACKET_LENGTH]);
 
 MESSAGE *read_full_message()
 {
-    PACKET packet;
     MESSAGE *msg = NULL;
 
-    int packet_received = 0;
-    while (!getmsg((char *)&packet))
+    char buffer[MAX_PACKET_LENGTH];
+    PACKET *packet = NULL;
+    for (int packet_received = 0, packet_count = 1; packet_received < packet_count; free(packet))
     {
-        switch (packet.header.message_type)
+        if (getmsg(buffer))
+            return NULL;
+
+        packet = (PACKET *)b64_decode(buffer, strlen(buffer));
+        switch (packet->header.message_type)
         {
         case HAND_SHAKE:
-            TRACE("Received hand shake packet:\n\t%s\n", (char *)&packet);
+            TRACE("Received hand shake packet:\n\t%s\n", packet->content);
+            packet_received--;
             continue;
         case TRANSFERT:
-            TRACE("Received transfert packet\n");
+            TRACE("Received transfert packet %d/%d\n", packet->header.index + 1, packet->header.count);
             if (!msg)
-                msg = (MESSAGE *)malloc(packet.header.total_size);
-
-            strncpy((char *)&msg + sizeof(packet.content) * packet.header.index, packet.content, sizeof(packet.content));
-            if (++packet_received == packet.header.count)
-                break;
+            {
+                packet_count = packet->header.count;
+                msg = malloc(packet->header.total_size);
+            }
+            size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content) : sizeof(packet->content);
+            strncpy((char *)msg + sizeof(packet->content) * packet->header.index, packet->content, content_size);
+            packet_received++;
             continue;
         default:
-            ERROR("Received unknown message type %c\n", packet.header.message_type);
+            ERROR("Received unknown message type %c\n", packet->header.message_type);
+            packet_received--;
             continue;
         }
-        TRACE("Full message received\n");
-        return msg;
     }
 
-    return NULL;
+    TRACE("Full message received:\n\t%s\n", msg->content);
+    return msg;
 }
