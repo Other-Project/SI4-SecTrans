@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 
 	while (1)
 	{
-		MESSAGE *message = read_full_message();
+		MESSAGE *message = read_message();
 		switch (message->action_type)
 		{
 		case UPLOAD:
