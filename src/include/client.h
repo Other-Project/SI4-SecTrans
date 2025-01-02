@@ -19,9 +19,10 @@ int safe_send_message(MESSAGE *message, int port)
     int hasError = 0;
     for (char *msg_ptr = (char *)message; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content), packet.header.index++)
     {
-        strncpy(packet.content, msg_ptr, sizeof(packet.content));
+        memcpy(packet.content, msg_ptr, sizeof(packet.content));
         char *buffer = b64_encode((unsigned char *)&packet, sizeof(PACKET));
-        TRACE("Sending transfert packet %d/%d\n", packet.header.index + 1, packet.header.count);
+        LOG("Sending transfert packet %d/%d\n", packet.header.index + 1, packet.header.count);
+        TRACE("\t%s\n", buffer);
         hasError = sndmsg(buffer, port);
         free(buffer);
     }

@@ -36,7 +36,7 @@ MESSAGE *read_full_message()
                 msg = malloc(packet->header.total_size);
             }
             size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content) : sizeof(packet->content);
-            strncpy((char *)msg + sizeof(packet->content) * packet->header.index, packet->content, content_size);
+            memcpy((void *)msg + sizeof(packet->content) * packet->header.index, packet->content, content_size);
             packet_received++;
             continue;
         default:
@@ -44,7 +44,6 @@ MESSAGE *read_full_message()
             continue;
         }
     }
-
-    TRACE("Full message received:\n\t%s\n", msg->content);
+    TRACE("Full message received\n");
     return msg;
 }
