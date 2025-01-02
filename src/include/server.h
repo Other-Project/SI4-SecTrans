@@ -27,7 +27,6 @@ MESSAGE *read_full_message()
         {
         case HAND_SHAKE:
             TRACE("Received hand shake packet:\n\t%s\n", packet->content);
-            packet_received--;
             continue;
         case TRANSFERT:
             TRACE("Received transfert packet %d/%d\n", packet->header.index + 1, packet->header.count);
@@ -42,7 +41,6 @@ MESSAGE *read_full_message()
             continue;
         default:
             ERROR("Received unknown message type %c\n", packet->header.message_type);
-            packet_received--;
             continue;
         }
     }
