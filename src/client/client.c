@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
         FATAL("Unknown action\n");
 
     LOG("Sending message\n");
-    if (safe_send_message(message, SERVER_PORT))
+    if (send_message(message, SERVER_PORT))
         FATAL("Error sending message\n");
     free(message);
     return 0;
