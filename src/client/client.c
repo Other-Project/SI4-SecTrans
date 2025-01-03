@@ -11,6 +11,7 @@
 MESSAGE *upload_message(char filename[])
 {
     char *content = NULL;
+    long buffer_size;
     FILE *file = fopen(filename, "r");
     long buffer_size;
     if (file != NULL)
@@ -42,7 +43,7 @@ MESSAGE *upload_message(char filename[])
         }
     }
     fclose(file);
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + sizeof(char) * (buffer_size);
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + (buffer_size + 1) * sizeof(char));
     msg->action_type = UPLOAD;
     strcpy(msg->filename, filename);
     memcpy(msg->content, content, buffer_size + 1);
