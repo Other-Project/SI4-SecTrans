@@ -10,11 +10,43 @@
 
 MESSAGE *upload_message(char filename[])
 {
-    char content[] = "Lorem ipsum odor amet, consectetuer adipiscing elit. Lectus vel efficitur aptent purus augue sit platea. Cubilia nostra natoque convallis habitant sem quisque aliquet. Metus habitant dis condimentum vehicula natoque aptent consectetur. Praesent scelerisque penatibus ultricies luctus velit ultrices fusce odio. Urna in curabitur odio felis condimentum commodo enim risus. Volutpat felis dui quam in ultricies vivamus tincidunt pellentesque. Quis sit vehicula volutpat parturient nec. Aenean congue per mus quam congue tempus dictum. Pellentesque penatibus posuere luctus tincidunt aliquam metus. Ornare vivamus ultrices, penatibus vestibulum suscipit etiam magna. Convallis dis torquent felis etiam potenti porta dictum. Iaculis porta ut euismod interdum nibh elit commodo quam. Egestas eros curabitur eu blandit nec. Curae duis per lacinia lacus convallis arcu class. Per aliquet himenaeos tempus tortor magna ut sem per senectus. Consequat nascetur mollis penatibus scelerisque dis primis laoreet porta. Velit tempor sagittis hendrerit venenatis nibh a. Hac nunc duis magnis hendrerit quisque. Praesent lorem primis porta accumsan lobortis sagittis curabitur iaculis. Eu orci accumsan litora, vehicula rhoncus consequat. Massa urna fermentum erat curabitur egestas hendrerit sit magna. Dolor penatibus bibendum id sagittis dictumst lacus. Quis curabitur habitant cras turpis nullam; ut velit ac. Inceptos eros netus dui imperdiet elit ornare vel. Phasellus curabitur feugiat aptent bibendum senectus convallis. Integer platea taciti vel tellus, dapibus cras porttitor. Feugiat posuere felis scelerisque integer mattis aliquam conubia pharetra. Efficitur hendrerit phasellus parturient luctus scelerisque habitant dignissim. Rutrum accumsan mi mollis consequat proin posuere sollicitudin. Facilisis scelerisque ligula a posuere sollicitudin sociosqu suspendisse. Praesent ultrices eleifend phasellus urna egestas quis ut elementum. Vulputate viverra dapibus; blandit odio eros viverra tortor fermentum. Rhoncus purus lorem pharetra suscipit nisl tellus. Eu himenaeos arcu mauris egestas nisi. Duis semper rhoncus lacus conubia sit. Torquent lacinia parturient lectus, pharetra eu sodales. Etiam id cursus per senectus habitasse primis a diam. At ultrices donec tristique maximus; natoque nisl condimentum. Iaculis rutrum eleifend vulputate eros fermentum blandit iaculis. Cubilia at rhoncus neque rhoncus mauris parturient nam quisque. Senectus vitae ante; ac interdum ad fusce. Vestibulum malesuada dolor velit orci ullamcorper hendrerit, venenatis vehicula. Per class laoreet efficitur fermentum eleifend orci magnis nibh.";
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + sizeof(content));
+    char *content = NULL;
+    FILE *file = fopen(filename, "r");
+    long buffer_size;
+    if (file != NULL)
+    {
+        if (fseek(file, 0L, SEEK_END) == 0)
+        {
+            buffer_size = ftell(file);
+            if (buffer_size == -1)
+            {
+                ERROR("Failed to create buffer size when uploading message");
+                exit(1);
+            }
+            content = malloc(sizeof(char) * (buffer_size + 1));
+            if (fseek(file, 0L, SEEK_SET) != 0)
+            {
+                ERROR("Failed to return at the start of file when uploading message");
+                exit(1);
+            }
+            size_t newLen = fread(content, sizeof(char), buffer_size, file);
+            if (ferror(file) != 0)
+            {
+                ERROR("Error while reading file");
+                exit(1);
+            }
+            else
+            {
+                content[newLen++] = '\0';
+            }
+        }
+    }
+    fclose(file);
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + sizeof(char) * (buffer_size);
     msg->action_type = UPLOAD;
     strcpy(msg->filename, filename);
-    strcpy(msg->content, content);
+    memcpy(msg->content, content, buffer_size + 1);
+    free(content);
     return msg;
 }
 
