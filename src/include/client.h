@@ -43,7 +43,7 @@ int send_message(MESSAGE *message, int port)
     if (sodium_init() < 0) {
         return -1; 
     }
-
+    
     unsigned char client_public_key[crypto_box_PUBLICKEYBYTES];
     unsigned char client_private_key[crypto_box_SECRETKEYBYTES];
     crypto_box_keypair(client_public_key, client_private_key);

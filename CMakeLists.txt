@@ -10,8 +10,8 @@ link_directories(src/include)
 add_executable(${PROJECT_NAME}_server src/server/server.c)
 add_executable(${PROJECT_NAME}_client src/client/client.c)
 
-target_link_libraries(${PROJECT_NAME}_client client b64c sodium)
-target_link_libraries(${PROJECT_NAME}_server server b64c sodium)
+target_link_libraries(${PROJECT_NAME}_client client server b64c sodium)
+target_link_libraries(${PROJECT_NAME}_server client server b64c sodium)
 
 # TESTS
 

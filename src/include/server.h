@@ -16,6 +16,8 @@ int stopserver();
 /* read message sent by client */
 int getmsg(char msg_read[MAX_PACKET_LENGTH]);
 
+int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port);
+
 int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_len)
 {
     char buffer[MAX_PACKET_LENGTH];
@@ -25,7 +27,10 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
         if (getmsg(buffer))
             return 1;
 
+        TRACE("Raw message data: %s\n", buffer);
+
         packet = (PACKET *)b64_decode(buffer, strlen(buffer));
+
         if (packet->header.message_type != expected_msg_type)
         {
             ERROR("Expected %c message type, received %c\n", expected_msg_type, packet->header.message_type);
@@ -33,10 +38,14 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
         }
 
         TRACE("Received packet [%c] %d/%d\n", packet->header.message_type, packet->header.index + 1, packet->header.count);
-        if (!*decoded)
         {
             packet_count = packet->header.count;
             *decoded = malloc(packet->header.total_size);
+            if (!*decoded) {
+                ERROR("Failed to allocate memory for decoded message\n");
+                free(packet);
+                return 1;
+            }
             *decoded_len = packet->header.total_size;
         }
         size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content) : sizeof(packet->content);
