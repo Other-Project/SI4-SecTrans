@@ -1,9 +1,14 @@
+#ifndef SERVER_H
+#define SERVER_H
+
 #include <malloc.h>
 #include <assert.h>
 #include <string.h>
+#include <sodium.h>
 #include "b64.h"
 #include "common.h"
 #include "message.h"
+#include "client.h"
 
 int startserver(int port);
 int stopserver();
@@ -45,8 +50,38 @@ MESSAGE *read_message()
 {
     MESSAGE *msg = NULL;
     size_t len;
-    if (read_bytes(TRANSFERT, (void **)&msg, &len))
+
+    HAND_SHAKE_MESSAGE shake_msg;
+
+    if (read_bytes(HAND_SHAKE, (void **)&shake_msg, &len)) {
         return NULL;
+    }
+    TRACE("Handshake message received with client public key\n");
+
+    unsigned char server_public_key[crypto_box_PUBLICKEYBYTES];
+    unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
+    crypto_box_keypair(server_public_key, server_private_key);
+
+    if (send_memory_zone(server_public_key, crypto_box_PUBLICKEYBYTES, HAND_SHAKE, shake_msg.response_port) != 0) {
+        return NULL;
+    }
+    TRACE("Server public key sent\n");
+
+    if (read_bytes(TRANSFERT, (void **)&msg, &len)) {
+        return NULL;
+    }
     TRACE("Message of %zu bytes received\n", len);
-    return msg;
+
+    unsigned char nonce[crypto_box_NONCEBYTES];
+    unsigned char *encrypted_message = (unsigned char *)msg;
+    unsigned char *decrypted_message = malloc(len - crypto_box_MACBYTES);
+    if (crypto_box_open_easy(decrypted_message, encrypted_message, len, nonce, shake_msg.public_key, server_private_key) != 0) {
+        free(decrypted_message);
+        return NULL;
+    }
+    TRACE("Message decrypted\n");
+
+    return (MESSAGE *)decrypted_message;
 }
+
+#endif
