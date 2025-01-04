@@ -31,6 +31,8 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
 
         packet = (PACKET *)b64_decode(buffer, strlen(buffer));
 
+        TRACE("Decoded message data: %s\n", packet->content);
+
         if (packet->header.message_type != expected_msg_type)
         {
             ERROR("Expected %c message type, received %c\n", expected_msg_type, packet->header.message_type);
@@ -55,6 +57,23 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
     return 0;
 }
 
+unsigned char *decrypt_message(MESSAGE *msg, unsigned char *client_public_key, unsigned char *server_private_key, size_t len)
+{
+    unsigned char nonce[crypto_box_NONCEBYTES];
+    unsigned char *encrypted_message = (unsigned char *)msg;
+    unsigned char *decrypted_message = malloc(len - crypto_box_MACBYTES);
+
+    if (crypto_box_open_easy(decrypted_message, encrypted_message, len, nonce, client_public_key, server_private_key) != 0)
+    {
+        ERROR("Failed to decrypt message\n");
+        free(decrypted_message);
+        return NULL;
+    }
+
+    TRACE("Message decrypted%s\n", decrypted_message);
+    return decrypted_message;
+}
+
 MESSAGE *read_message()
 {
     MESSAGE *msg = NULL;
@@ -71,7 +90,9 @@ MESSAGE *read_message()
     unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
     crypto_box_keypair(server_public_key, server_private_key);
 
-    if (send_memory_zone(server_public_key, crypto_box_PUBLICKEYBYTES, HAND_SHAKE, shake_msg.response_port) != 0) {
+    TRACE("response_port %d \n", shake_msg.response_port);
+
+    if (send_memory_zone(server_public_key, crypto_box_PUBLICKEYBYTES, HAND_SHAKE, 5001) != 0) {
         return NULL;
     }
     TRACE("Server public key sent\n");
@@ -81,16 +102,14 @@ MESSAGE *read_message()
     }
     TRACE("Message of %zu bytes received\n", len);
 
-    unsigned char nonce[crypto_box_NONCEBYTES];
-    unsigned char *encrypted_message = (unsigned char *)msg;
-    unsigned char *decrypted_message = malloc(len - crypto_box_MACBYTES);
-    if (crypto_box_open_easy(decrypted_message, encrypted_message, len, nonce, shake_msg.public_key, server_private_key) != 0) {
-        free(decrypted_message);
+    unsigned char *decrypted_message = decrypt_message(msg, shake_msg.public_key, server_private_key, len);
+
+    if (decrypted_message == NULL) {
+        free(msg);
         return NULL;
     }
-    TRACE("Message decrypted\n");
 
-    return (MESSAGE *)decrypted_message;
+    return (MESSAGE *) decrypted_message;
 }
 
 #endif

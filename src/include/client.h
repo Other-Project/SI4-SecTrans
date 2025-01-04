@@ -48,7 +48,7 @@ int send_message(MESSAGE *message, int port)
     unsigned char client_private_key[crypto_box_SECRETKEYBYTES];
     crypto_box_keypair(client_public_key, client_private_key);
 
-    int client_port = 5010;
+    int client_port = 5001;
     int err = startserver(client_port);
     if (err) return err;
 
