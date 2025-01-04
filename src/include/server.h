@@ -27,11 +27,7 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
         if (getmsg(buffer))
             return 1;
 
-        TRACE("Raw message data: %s\n", buffer);
-
         packet = (PACKET *)b64_decode(buffer, strlen(buffer));
-
-        TRACE("Decoded message data: %s\n", packet->content);
 
         if (packet->header.message_type != expected_msg_type)
         {
@@ -57,13 +53,12 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
     return 0;
 }
 
-unsigned char *decrypt_message(MESSAGE *msg, unsigned char *client_public_key, unsigned char *server_private_key, size_t len)
+unsigned char *decrypt_message(ENCRYPTED_MESSAGE *msg, unsigned char *client_public_key, unsigned char *server_private_key, size_t len)
 {
-    unsigned char nonce[crypto_box_NONCEBYTES];
     unsigned char *encrypted_message = (unsigned char *)msg;
     unsigned char *decrypted_message = malloc(len - crypto_box_MACBYTES);
 
-    if (crypto_box_open_easy(decrypted_message, encrypted_message, len, nonce, client_public_key, server_private_key) != 0)
+    if (crypto_box_open_easy(decrypted_message, encrypted_message, len, msg->nonce, client_public_key, server_private_key) != 0)
     {
         ERROR("Failed to decrypt message\n");
         free(decrypted_message);
@@ -76,7 +71,7 @@ unsigned char *decrypt_message(MESSAGE *msg, unsigned char *client_public_key, u
 
 MESSAGE *read_message()
 {
-    MESSAGE *msg = NULL;
+    ENCRYPTED_MESSAGE *msg = NULL;
     size_t len;
 
     HAND_SHAKE_MESSAGE shake_msg;

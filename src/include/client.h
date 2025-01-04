@@ -79,17 +79,18 @@ int send_message(MESSAGE *message, int port)
         return -1; 
     }
 
-    struct {
-        unsigned char nonce[crypto_box_NONCEBYTES];
-        unsigned char encrypted_message[];
-    } *encrypted_packet = malloc(sizeof(*encrypted_packet) + message_len + crypto_box_MACBYTES);
+    ENCRYPTED_MESSAGE *encrypted_msg = (ENCRYPTED_MESSAGE *)malloc(sizeof(ENCRYPTED_MESSAGE) + message_len + crypto_box_MACBYTES);
+    encrypted_msg->action_type = message->action_type;
+    strcpy(encrypted_msg->filename, message->filename);
+    memcpy(encrypted_msg->content, encrypted_message, message_len + crypto_box_MACBYTES);
+    memcpy(encrypted_msg->nonce, nonce, crypto_box_NONCEBYTES);
 
-    memcpy(encrypted_packet->nonce, nonce, crypto_box_NONCEBYTES);
-    memcpy(encrypted_packet->encrypted_message, encrypted_message, message_len + crypto_box_MACBYTES);
-    err = send_memory_zone(encrypted_packet, sizeof(*encrypted_packet) + message_len + crypto_box_MACBYTES, TRANSFERT, port);
+    err = send_memory_zone(encrypted_msg, sizeof(*encrypted_msg) + message_len + crypto_box_MACBYTES, TRANSFERT, port);
+
     free(server_public_key);
     free(encrypted_message);
-    free(encrypted_packet);
+    free(encrypted_msg);
+
     if (err) return err;
 
     err = stopserver();
