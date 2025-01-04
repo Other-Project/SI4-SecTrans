@@ -1,4 +1,5 @@
 #include "common.h"
+#include <sodium.h>
 
 #ifndef MESSAGE_H
 #define MESSAGE_H
@@ -36,5 +37,11 @@ typedef struct
     char filename[MAX_FILENAME_LENGTH];
     char content[];
 } MESSAGE;
+
+typedef struct {
+    int response_port;
+    unsigned char public_key[crypto_box_PUBLICKEYBYTES];
+} HAND_SHAKE_MESSAGE;
+
 
 #endif
