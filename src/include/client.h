@@ -88,25 +88,24 @@ int send_message(MESSAGE *message, int port)
     if (err) return err;
 
     HAND_SHAKE_MESSAGE shake_msg;
-
     shake_msg.response_port = client_port;
     memcpy(shake_msg.public_key, client_public_key, crypto_box_PUBLICKEYBYTES);
     memcpy(shake_msg.nonce, nonce, crypto_box_NONCEBYTES);
+
+    TRACE("public key: %s\nnouce: %s\n", shake_msg.public_key, shake_msg.nonce);
+    TRACE("Len of public key: %zu\n", strlen((const char *)shake_msg.public_key));
 
     err = send_memory_zone(&shake_msg, sizeof(shake_msg), HAND_SHAKE, port);
     if (err) return err;
 
     HAND_SHAKE_MESSAGE *response = NULL;
     size_t response_size;
+
     err = read_bytes(HAND_SHAKE, (void **)&response, &response_size);
     if (err) return err;
-    if (sizeof(response->public_key) != crypto_box_PUBLICKEYBYTES) {
-        ERROR("Invalid server public key size\n");
-        free(response);
-        return -1;
-    }
 
-    TRACE("Received server public key %s\n", response->public_key);
+    TRACE("Received server public key: %s\n", response->public_key);
+    TRACE("Len of server public key: %lu\n", (unsigned long)strlen((const char *)response->public_key));
 
     send_memory_zone_encrypted(message, sizeof(*message) + strlen(message->content) + crypto_box_MACBYTES , TRANSFERT, nonce, client_private_key, response->public_key, port);
 

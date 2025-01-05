@@ -57,7 +57,9 @@ int read_bytes_ciphered(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *
         if (getmsg(buffer))
             return 1;
 
-        if (crypto_box_open_easy((unsigned char *)buffer, (unsigned char *)buffer, strlen(buffer), nonce, server_private_key, client_public_key) != 0)
+        TRACE("\t%s\n", buffer);
+
+        if (crypto_box_open_easy((unsigned char *)buffer, (unsigned char *)buffer, strlen(buffer), nonce, client_public_key, server_private_key) != 0)
         {
             ERROR("Failed to decrypt message\n");
             return 1;
@@ -96,7 +98,8 @@ MESSAGE *read_message()
         return NULL;
     }
 
-    TRACE("response_port, public_key, nouce: %d, %s, %s \n", shake_msg->response_port, shake_msg->public_key, shake_msg->nonce);
+    TRACE("response_port: %d\npublic_key: %s\nnouce: %s\n", shake_msg->response_port, shake_msg->public_key, shake_msg->nonce);
+    TRACE("Len of public key: %zu\n", strlen((const char *)shake_msg->public_key));
 
     unsigned char server_public_key[crypto_box_PUBLICKEYBYTES];
     unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
@@ -108,11 +111,11 @@ MESSAGE *read_message()
     memcpy(response.nonce, shake_msg->nonce, crypto_box_NONCEBYTES);
 
     TRACE("Sending server public key: %s\n", response.public_key);
+    TRACE("Len of server public key: %zu\n", strlen((const char *)response.public_key));
 
     if (send_memory_zone(&response, sizeof(response), HAND_SHAKE, shake_msg->response_port)) {
         return NULL;
     }
-    TRACE("Server public key sent\n");
 
    if (read_bytes_ciphered(TRANSFERT, (void **)&msg, &len, shake_msg->nonce, server_private_key, shake_msg->public_key)) {
         return NULL;
