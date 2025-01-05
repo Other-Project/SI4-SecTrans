@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
 #include "server.h"
 #include "common.h"
 
@@ -46,9 +47,34 @@ void handle_download_message(MESSAGE *message)
 	LOG("Received download request for file: %s\n", message->filename);
 }
 
-void handle_list_message(MESSAGE *message)
+void handle_list_message(MESSAGE *messageReceived)
 {
 	LOG("Received list request\n");
+	char *files = (char *)malloc(MAX_DECODED_SIZE);
+	DIR *dir;
+	struct dirent *ent;
+	if ((dir = opendir("../src/server/files")) != NULL)
+	{
+		while ((ent = readdir(dir)) != NULL)
+		{
+			if (ent->d_name[0] != '.' && strcmp(ent->d_name, "..") != 0)
+			{
+				strcat(files, ent->d_name);
+				strcat(files, "\n");
+			}
+		}
+		closedir(dir);
+	}
+	else
+	{
+		ERROR("Can't open directory\n");
+	}
+	MESSAGE *message = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(files));
+	message->action_type = LIST;
+	strcpy(message->content, files);
+	if (send_message(message, atoi(messageReceived->content)))
+		FATAL("Error sending message\n");
+	free(files);
 }
 
 int main(int argc, char **argv)

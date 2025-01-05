@@ -8,6 +8,13 @@
     if (argc < nb)          \
         FATAL("%s\n", msg);
 
+void stopServer(int _)
+{
+    if (stopserver())
+        FATAL("Failed to gracefully stop the server\n");
+    exit(0);
+}
+
 MESSAGE *upload_message(char filename[])
 {
     char *content = NULL;
@@ -67,12 +74,39 @@ MESSAGE *download_message(char filename[])
     return msg;
 }
 
-MESSAGE *list_message()
+void handle_list_message(MESSAGE *message)
+{
+    printf("Files on server:\n\n%s\n", message->content);
+}
+
+void *list_message()
 {
     MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE));
     msg->action_type = LIST;
     msg->filename[0] = '\0';
-    return msg;
+    strcpy(msg->content, "5001");
+    LOG("Sending message\n");
+    if (send_message(msg, SERVER_PORT))
+        FATAL("Error sending message\n");
+    free(msg);
+    startserver(CLIENT_PORT);
+    while (1)
+    {
+        MESSAGE *message = read_message();
+        switch (message->action_type)
+        {
+        case LIST:
+            LOG("Received list message\n");
+            handle_list_message(message);
+            free(message);
+            stopServer(0);
+            return NULL;
+        default:
+            ERROR("Received unknown action type %c\n", message->action_type);
+            break;
+        }
+        free(message);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -91,10 +125,12 @@ int main(int argc, char *argv[])
         message = download_message(argv[2]);
     }
     else if (!strcmp(argv[1], "-list"))
-        message = list_message();
+    {
+        list_message();
+        return 0;
+    }
     else
         FATAL("Unknown action\n");
-
     LOG("Sending message\n");
     if (send_message(message, SERVER_PORT))
         FATAL("Error sending message\n");

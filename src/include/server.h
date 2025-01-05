@@ -1,9 +1,12 @@
+#ifndef SERVER_H
+#define SERVER_H
+
 #include <malloc.h>
 #include <assert.h>
 #include <string.h>
 #include "b64.h"
-#include "common.h"
 #include "message.h"
+#include "client.h"
 
 int startserver(int port);
 int stopserver();
@@ -50,3 +53,6 @@ MESSAGE *read_message()
     TRACE("Message of %zu bytes received\n", len);
     return msg;
 }
+
+
+#endif
