@@ -28,7 +28,6 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
             return 1;
 
         packet = (PACKET *)b64_decode(buffer, strlen(buffer));
-
         if (packet->header.message_type != expected_msg_type)
         {
             ERROR("Expected %c message type, received %c\n", expected_msg_type, packet->header.message_type);
@@ -36,14 +35,10 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
         }
 
         TRACE("Received packet [%c] %d/%d\n", packet->header.message_type, packet->header.index + 1, packet->header.count);
+        if (!*decoded)
         {
             packet_count = packet->header.count;
             *decoded = malloc(packet->header.total_size);
-            if (!*decoded) {
-                ERROR("Failed to allocate memory for decoded message\n");
-                free(packet);
-                return 1;
-            }
             *decoded_len = packet->header.total_size;
         }
         size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content) : sizeof(packet->content);
@@ -74,20 +69,24 @@ MESSAGE *read_message()
     ENCRYPTED_MESSAGE *msg = NULL;
     size_t len;
 
-    HAND_SHAKE_MESSAGE shake_msg;
+    HAND_SHAKE_MESSAGE *shake_msg = NULL;
+    size_t shake_len;
 
-    if (read_bytes(HAND_SHAKE, (void **)&shake_msg, &len)) {
+    if (read_bytes(HAND_SHAKE, (void **)&shake_msg, &shake_len)) {
         return NULL;
     }
-    TRACE("Handshake message received with client public key\n");
+
+    TRACE("response_port and public key : %d, %s \n", shake_msg->response_port, shake_msg->public_key);
 
     unsigned char server_public_key[crypto_box_PUBLICKEYBYTES];
     unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
     crypto_box_keypair(server_public_key, server_private_key);
 
-    TRACE("response_port %d \n", shake_msg.response_port);
+    HAND_SHAKE_MESSAGE response;
+    response.response_port = SERVER_PORT;
+    memcpy(response.public_key, server_public_key, crypto_box_PUBLICKEYBYTES);
 
-    if (send_memory_zone(server_public_key, crypto_box_PUBLICKEYBYTES, HAND_SHAKE, 5001) != 0) {
+    if (send_memory_zone(&response, sizeof(response), HAND_SHAKE, shake_msg->response_port)) {
         return NULL;
     }
     TRACE("Server public key sent\n");
@@ -97,7 +96,7 @@ MESSAGE *read_message()
     }
     TRACE("Message of %zu bytes received\n", len);
 
-    unsigned char *decrypted_message = decrypt_message(msg, shake_msg.public_key, server_private_key, len);
+    unsigned char *decrypted_message = decrypt_message(msg, shake_msg->public_key, server_private_key, len);
 
     if (decrypted_message == NULL) {
         free(msg);

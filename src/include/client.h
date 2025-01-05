@@ -60,12 +60,13 @@ int send_message(MESSAGE *message, int port)
     err = send_memory_zone(&shake_msg, sizeof(shake_msg), HAND_SHAKE, port);
     if (err) return err;
 
-    unsigned char *server_public_key;
-    size_t server_public_key_size;
-    err = read_bytes(HAND_SHAKE, (void **)&server_public_key, &server_public_key_size);
+    HAND_SHAKE_MESSAGE *response = NULL;
+    size_t response_size;
+    err = read_bytes(HAND_SHAKE, (void **)&response, &response_size);
     if (err) return err;
-    if (server_public_key_size != crypto_box_PUBLICKEYBYTES) {
-        free(server_public_key);
+    if (sizeof(response->public_key) != crypto_box_PUBLICKEYBYTES) {
+        ERROR("Invalid server public key size\n");
+        free(response);
         return -1;
     }
 
@@ -73,8 +74,8 @@ int send_message(MESSAGE *message, int port)
     unsigned char nonce[crypto_box_NONCEBYTES];
     unsigned char *encrypted_message = malloc(message_len + crypto_box_MACBYTES);
     randombytes_buf(nonce, sizeof nonce);
-    if (crypto_box_easy(encrypted_message, (unsigned char *)message, message_len, nonce, server_public_key, client_private_key) != 0) {
-        free(server_public_key);
+    if (crypto_box_easy(encrypted_message, (unsigned char *)message, message_len, nonce, response->public_key, client_private_key) != 0) {
+        free(response);
         free(encrypted_message);
         return -1; 
     }
@@ -87,7 +88,7 @@ int send_message(MESSAGE *message, int port)
 
     err = send_memory_zone(encrypted_msg, sizeof(*encrypted_msg) + message_len + crypto_box_MACBYTES, TRANSFERT, port);
 
-    free(server_public_key);
+    free(response);
     free(encrypted_message);
     free(encrypted_msg);
 
