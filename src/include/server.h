@@ -48,25 +48,45 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
     return 0;
 }
 
-unsigned char *decrypt_message(ENCRYPTED_MESSAGE *msg, unsigned char *client_public_key, unsigned char *server_private_key, size_t len)
+int read_bytes_ciphered(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_len, unsigned char* nonce, unsigned char* server_private_key, unsigned char* client_public_key)
 {
-    unsigned char *encrypted_message = (unsigned char *)msg;
-    unsigned char *decrypted_message = malloc(len - crypto_box_MACBYTES);
-
-    if (crypto_box_open_easy(decrypted_message, encrypted_message, len, msg->nonce, client_public_key, server_private_key) != 0)
+    char buffer[MAX_PACKET_LENGTH];
+    PACKET *packet = NULL;
+    for (int packet_received = 0, packet_count = 1; packet_received < packet_count; free(packet))
     {
-        ERROR("Failed to decrypt message\n");
-        free(decrypted_message);
-        return NULL;
-    }
+        if (getmsg(buffer))
+            return 1;
 
-    TRACE("Message decrypted%s\n", decrypted_message);
-    return decrypted_message;
+        if (crypto_box_open_easy((unsigned char *)buffer, (unsigned char *)buffer, strlen(buffer), nonce, server_private_key, client_public_key) != 0)
+        {
+            ERROR("Failed to decrypt message\n");
+            return 1;
+        }
+
+        packet = (PACKET *)b64_decode(buffer, strlen(buffer));
+        if (packet->header.message_type != expected_msg_type)
+        {
+            ERROR("Expected %c message type, received %c\n", expected_msg_type, packet->header.message_type);
+            continue;
+        }
+
+        TRACE("Received packet [%c] %d/%d\n", packet->header.message_type, packet->header.index + 1, packet->header.count);
+        if (!*decoded)
+        {
+            packet_count = packet->header.count;
+            *decoded = malloc(packet->header.total_size);
+            *decoded_len = packet->header.total_size;
+        }
+        size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content) : sizeof(packet->content);
+        memcpy(*decoded + sizeof(packet->content) * packet->header.index, packet->content, content_size);
+        packet_received++;
+    }
+    return 0;
 }
 
 MESSAGE *read_message()
 {
-    ENCRYPTED_MESSAGE *msg = NULL;
+    MESSAGE *msg = NULL;
     size_t len;
 
     HAND_SHAKE_MESSAGE *shake_msg = NULL;
@@ -76,7 +96,7 @@ MESSAGE *read_message()
         return NULL;
     }
 
-    TRACE("response_port and public key : %d, %s \n", shake_msg->response_port, shake_msg->public_key);
+    TRACE("response_port, public_key, nouce: %d, %s, %s \n", shake_msg->response_port, shake_msg->public_key, shake_msg->nonce);
 
     unsigned char server_public_key[crypto_box_PUBLICKEYBYTES];
     unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
@@ -85,25 +105,22 @@ MESSAGE *read_message()
     HAND_SHAKE_MESSAGE response;
     response.response_port = SERVER_PORT;
     memcpy(response.public_key, server_public_key, crypto_box_PUBLICKEYBYTES);
+    memcpy(response.nonce, shake_msg->nonce, crypto_box_NONCEBYTES);
+
+    TRACE("Sending server public key: %s\n", response.public_key);
 
     if (send_memory_zone(&response, sizeof(response), HAND_SHAKE, shake_msg->response_port)) {
         return NULL;
     }
     TRACE("Server public key sent\n");
 
-    if (read_bytes(TRANSFERT, (void **)&msg, &len)) {
+   if (read_bytes_ciphered(TRANSFERT, (void **)&msg, &len, shake_msg->nonce, server_private_key, shake_msg->public_key)) {
         return NULL;
     }
+
     TRACE("Message of %zu bytes received\n", len);
 
-    unsigned char *decrypted_message = decrypt_message(msg, shake_msg->public_key, server_private_key, len);
-
-    if (decrypted_message == NULL) {
-        free(msg);
-        return NULL;
-    }
-
-    return (MESSAGE *) decrypted_message;
+    return (MESSAGE *) msg;
 }
 
 #endif

@@ -38,17 +38,10 @@ typedef struct
     char content[];
 } MESSAGE;
 
-typedef struct 
-{
-    ACTION_TYPE action_type;
-    char filename[MAX_FILENAME_LENGTH];
-    unsigned char nonce[crypto_box_NONCEBYTES];
-    char content[];
-} ENCRYPTED_MESSAGE;
-
 typedef struct {
     int response_port;
     unsigned char public_key[crypto_box_PUBLICKEYBYTES];
+    unsigned char nonce[crypto_box_NONCEBYTES];
 } HAND_SHAKE_MESSAGE;
 
 
