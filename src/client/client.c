@@ -13,7 +13,6 @@ MESSAGE *upload_message(char filename[])
     char *content = NULL;
     long buffer_size;
     FILE *file = fopen(filename, "r");
-    long buffer_size;
     if (file != NULL)
     {
         if (fseek(file, 0L, SEEK_END) == 0)
@@ -36,18 +35,27 @@ MESSAGE *upload_message(char filename[])
                 ERROR("Error while reading file");
                 exit(1);
             }
-            else
-            {
-                content[newLen++] = '\0';
-            }
+        }
+        else
+        {
+            ERROR("Can't go to the end of the file");
+            exit(1);
         }
     }
+    else
+    {
+        ERROR("Can't read the file");
+        exit(1);
+    }
     fclose(file);
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + (buffer_size + 1) * sizeof(char));
+    size_t encoded_size = 4 * ((buffer_size + 1) / 3);
+    char *buffer_64 = b64_encode((unsigned char *)content, encoded_size + 1);
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + encoded_size + 1);
     msg->action_type = UPLOAD;
     strcpy(msg->filename, filename);
-    memcpy(msg->content, content, buffer_size + 1);
+    memcpy(msg->content, buffer_64, encoded_size);
     free(content);
+    free(buffer_64);
     return msg;
 }
 

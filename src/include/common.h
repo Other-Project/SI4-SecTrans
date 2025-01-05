@@ -7,6 +7,7 @@
 #define SERVER_PORT 5000
 #define MAX_PACKET_LENGTH 1024
 #define MAX_FILENAME_LENGTH 256
+#define MAX_DECODED_SIZE 100000000
 
 #ifdef NDEBUG
 #define TRACE(...)
@@ -15,8 +16,8 @@
 #endif
 #define LOG(...) printf(__VA_ARGS__)
 #define ERROR(...) fprintf(stderr, __VA_ARGS__)
-#define FATAL(...)                  \
-	{                                \
+#define FATAL(...)                    \
+	{                                 \
 		fprintf(stderr, __VA_ARGS__); \
 		exit(1);                      \
 	}
