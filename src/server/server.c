@@ -45,6 +45,57 @@ void handle_upload_message(MESSAGE *message)
 void handle_download_message(MESSAGE *message)
 {
 	LOG("Received download request for file: %s\n", message->filename);
+	char *content = NULL;
+	long buffer_size;
+	char filename[1024];
+	snprintf(filename, sizeof(filename), "../src/server/files/%s", message->filename);
+	printf("Downloading file %s\n", filename);
+	FILE *file = fopen(filename, "r");
+	if (file != NULL)
+	{
+		if (fseek(file, 0L, SEEK_END) == 0)
+		{
+			buffer_size = ftell(file);
+			if (buffer_size == -1)
+			{
+				ERROR("Failed to create buffer size when uploading message");
+				exit(1);
+			}
+			content = malloc(sizeof(char) * (buffer_size + 1));
+			if (fseek(file, 0L, SEEK_SET) != 0)
+			{
+				ERROR("Failed to return at the start of file when uploading message");
+				exit(1);
+			}
+			size_t newLen = fread(content, sizeof(char), buffer_size, file);
+			if (ferror(file) != 0)
+			{
+				ERROR("Error while reading file");
+				exit(1);
+			}
+		}
+		else
+		{
+			ERROR("Can't go to the end of the file");
+			exit(1);
+		}
+	}
+	else
+	{
+		ERROR("File not found\nThe given file %s\n does not seem to exist", message->filename);
+		exit(1);
+	}
+	fclose(file);
+	size_t encoded_size = 4 * ((buffer_size + 1) / 3);
+	char *buffer_64 = b64_encode((unsigned char *)content, encoded_size + 1);
+	MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + encoded_size + 1);
+	msg->action_type = DOWNLOAD;
+	strcpy(msg->filename, filename);
+	memcpy(msg->content, buffer_64, encoded_size);
+	free(content);
+	free(buffer_64);
+	if (send_message(msg, atoi(message->content)))
+		FATAL("Error sending message\n");
 }
 
 void handle_list_message(MESSAGE *messageReceived)
