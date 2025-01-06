@@ -57,19 +57,24 @@ int read_bytes_ciphered(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *
         if (getmsg(buffer))
             return 1;
 
-        const char *decipher_buffer = malloc(strlen(buffer) - ((crypto_box_MACBYTES + 2)/3)*4); // to have the size 16U in base64
+        TRACE("Received ciphered packet:\n");
+        unsigned char *decoded_buffer = b64_decode(buffer, strlen(buffer));
+
+        size_t decrypted_len = strlen(buffer) * 3/4 - 1;
+        unsigned char *decrypted_buffer = malloc(decrypted_len - crypto_box_MACBYTES);
 
         TRACE("\t%s\n", buffer);
+        TRACE("Decoded buffer length: %zu\n", decrypted_len);
 
-        TRACE("\t%s\n", decipher_buffer);
-
-        if (crypto_box_open_easy((unsigned char *)decipher_buffer, (unsigned char *)buffer, strlen(buffer), nonce, client_public_key, server_private_key) != 0)
+        if (crypto_box_open_easy(decrypted_buffer, decoded_buffer, decrypted_len, nonce, client_public_key, server_private_key) != 0)
         {
             ERROR("Failed to decrypt message\n");
             return 1;
         }
 
-        packet = (PACKET *)b64_decode(decipher_buffer, strlen(decipher_buffer));
+        free(decoded_buffer);
+
+        packet = (PACKET *)decrypted_buffer;
         if (packet->header.message_type != expected_msg_type)
         {
             ERROR("Expected %c message type, received %c\n", expected_msg_type, packet->header.message_type);
@@ -89,7 +94,6 @@ int read_bytes_ciphered(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *
     }
     return 0;
 }
-
 MESSAGE *read_message()
 {
     if (sodium_init() < 0) {
@@ -111,6 +115,9 @@ MESSAGE *read_message()
     unsigned char server_public_key[crypto_box_PUBLICKEYBYTES];
     unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
     crypto_box_keypair(server_public_key, server_private_key);
+
+    TRACE("Server private key: %s\n", b64_encode(server_private_key, crypto_box_SECRETKEYBYTES));
+    TRACE("Server public key: %s\n", b64_encode(server_public_key, crypto_box_PUBLICKEYBYTES));
 
     HAND_SHAKE_MESSAGE response;
     response.response_port = SERVER_PORT;

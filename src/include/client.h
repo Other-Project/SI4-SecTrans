@@ -39,7 +39,7 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port)
 }
 
 int send_memory_zone_encrypted(void *start, size_t len, MESSAGE_TYPE msg_type, unsigned char* nonce,
-    unsigned char* client_private_key, unsigned char* sever_public_key, int port)
+    unsigned char* client_private_key, unsigned char* server_public_key, int port)
 {
     assert(sizeof(PACKET) <= MAX_SIZE_BEFORE_B64(MAX_PACKET_LENGTH));
 
@@ -53,23 +53,31 @@ int send_memory_zone_encrypted(void *start, size_t len, MESSAGE_TYPE msg_type, u
     for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content), packet.header.index++)
     {
         memcpy(packet.content, msg_ptr, sizeof(packet.content));
-        char *buffer = b64_encode((unsigned char *)&packet, sizeof(PACKET) - crypto_box_MACBYTES);
-        char *encrypted_buffer = malloc(strlen(buffer) + ((crypto_box_MACBYTES + 2)/3)*4); // to have the size 16U in base64
 
-        if (crypto_box_easy((unsigned char *)encrypted_buffer, (unsigned char *)buffer, strlen(buffer), nonce, sever_public_key, client_private_key) != 0)
+        unsigned char *encrypted_buffer = malloc(sizeof(PACKET));
+
+        if (crypto_box_easy(encrypted_buffer, (unsigned char *)&packet, sizeof(PACKET) - crypto_box_MACBYTES, nonce, server_public_key, client_private_key) != 0)
         {
             ERROR("Failed to encrypt message\n");
-            free(buffer);
+            free(encrypted_buffer);
+            return -1;
+        }
+
+        char *encoded_buffer = b64_encode(encrypted_buffer, sizeof(PACKET));
+        if (encoded_buffer == NULL) {
+            ERROR("Failed to encode Base64 message\n");
+            free(encrypted_buffer);
             return -1;
         }
 
         LOG("Sending packet [%c] %d/%d\n", packet.header.message_type, packet.header.index + 1, packet.header.count);      
+        TRACE("Decoded buffer size: %zu\n", sizeof(PACKET));
 
-        TRACE("\t%s\n", buffer);
-        TRACE("\t%s\n", encrypted_buffer);
+        TRACE("\t%s\n", encoded_buffer);
 
-        hasError = sndmsg(encrypted_buffer, port);
-        free(buffer);
+        hasError = sndmsg(encoded_buffer, port);
+        free(encrypted_buffer);
+        free(encoded_buffer);
     }
     return hasError;
 }
