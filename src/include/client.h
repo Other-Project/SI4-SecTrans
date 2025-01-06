@@ -50,9 +50,9 @@ int send_memory_zone_encrypted(void *start, size_t len, MESSAGE_TYPE msg_type, u
     packet.header.count = CEIL_DIV(packet.header.total_size, sizeof(packet.content));
 
     int hasError = 0;
-    for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content), packet.header.index++)
+    for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content) - crypto_box_MACBYTES, packet.header.index++)
     {
-        memcpy(packet.content, msg_ptr, sizeof(packet.content));
+        memcpy(packet.content, msg_ptr, sizeof(packet.content) - crypto_box_MACBYTES);
 
         unsigned char *encrypted_buffer = malloc(sizeof(PACKET));
 
@@ -70,8 +70,7 @@ int send_memory_zone_encrypted(void *start, size_t len, MESSAGE_TYPE msg_type, u
             return -1;
         }
 
-        LOG("Sending packet [%c] %d/%d\n", packet.header.message_type, packet.header.index + 1, packet.header.count);      
-        TRACE("Decoded buffer size: %zu\n", sizeof(PACKET));
+        LOG("Sending packet [%c] %d/%d\n", packet.header.message_type, packet.header.index + 1, packet.header.count);   
 
         TRACE("\t%s\n", encoded_buffer);
 
