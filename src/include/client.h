@@ -53,18 +53,22 @@ int send_memory_zone_encrypted(void *start, size_t len, MESSAGE_TYPE msg_type, u
     for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content), packet.header.index++)
     {
         memcpy(packet.content, msg_ptr, sizeof(packet.content));
-        char *buffer = b64_encode((unsigned char *)&packet, sizeof(PACKET));
+        char *buffer = b64_encode((unsigned char *)&packet, sizeof(PACKET) - crypto_box_MACBYTES);
+        char *encrypted_buffer = malloc(strlen(buffer) + ((crypto_box_MACBYTES + 2)/3)*4); // to have the size 16U in base64
 
-        if (crypto_box_easy((unsigned char *)buffer, (unsigned char *)buffer, strlen(buffer), nonce, sever_public_key, client_private_key) != 0)
+        if (crypto_box_easy((unsigned char *)encrypted_buffer, (unsigned char *)buffer, strlen(buffer), nonce, sever_public_key, client_private_key) != 0)
         {
             ERROR("Failed to encrypt message\n");
             free(buffer);
             return -1;
         }
 
-        LOG("Sending packet [%c] %d/%d\n", packet.header.message_type, packet.header.index + 1, packet.header.count);
+        LOG("Sending packet [%c] %d/%d\n", packet.header.message_type, packet.header.index + 1, packet.header.count);      
+
         TRACE("\t%s\n", buffer);
-        hasError = sndmsg(buffer, port);
+        TRACE("\t%s\n", encrypted_buffer);
+
+        hasError = sndmsg(encrypted_buffer, port);
         free(buffer);
     }
     return hasError;
@@ -92,8 +96,7 @@ int send_message(MESSAGE *message, int port)
     memcpy(shake_msg.public_key, client_public_key, crypto_box_PUBLICKEYBYTES);
     memcpy(shake_msg.nonce, nonce, crypto_box_NONCEBYTES);
 
-    TRACE("public key: %s\nnouce: %s\n", shake_msg.public_key, shake_msg.nonce);
-    TRACE("Len of public key: %zu\n", strlen((const char *)shake_msg.public_key));
+    TRACE("client_key: %s\nnouce: %s\n", b64_encode(shake_msg.public_key, crypto_box_PUBLICKEYBYTES), b64_encode(shake_msg.nonce, crypto_box_NONCEBYTES));
 
     err = send_memory_zone(&shake_msg, sizeof(shake_msg), HAND_SHAKE, port);
     if (err) return err;
@@ -104,10 +107,9 @@ int send_message(MESSAGE *message, int port)
     err = read_bytes(HAND_SHAKE, (void **)&response, &response_size);
     if (err) return err;
 
-    TRACE("Received server public key: %s\n", response->public_key);
-    TRACE("Len of server public key: %lu\n", (unsigned long)strlen((const char *)response->public_key));
+    TRACE("Received server public key: %s\n", b64_encode(response->public_key, crypto_box_PUBLICKEYBYTES));
 
-    send_memory_zone_encrypted(message, sizeof(*message) + strlen(message->content) + crypto_box_MACBYTES , TRANSFERT, nonce, client_private_key, response->public_key, port);
+    send_memory_zone_encrypted(message, sizeof(*message) + strlen(message->content) + crypto_box_MACBYTES, TRANSFERT, nonce, client_private_key, response->public_key, port);
 
     err = stopserver();
     return err;

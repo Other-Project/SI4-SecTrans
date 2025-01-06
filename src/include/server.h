@@ -57,15 +57,19 @@ int read_bytes_ciphered(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *
         if (getmsg(buffer))
             return 1;
 
+        const char *decipher_buffer = malloc(strlen(buffer) - ((crypto_box_MACBYTES + 2)/3)*4); // to have the size 16U in base64
+
         TRACE("\t%s\n", buffer);
 
-        if (crypto_box_open_easy((unsigned char *)buffer, (unsigned char *)buffer, strlen(buffer), nonce, client_public_key, server_private_key) != 0)
+        TRACE("\t%s\n", decipher_buffer);
+
+        if (crypto_box_open_easy((unsigned char *)decipher_buffer, (unsigned char *)buffer, strlen(buffer), nonce, client_public_key, server_private_key) != 0)
         {
             ERROR("Failed to decrypt message\n");
             return 1;
         }
 
-        packet = (PACKET *)b64_decode(buffer, strlen(buffer));
+        packet = (PACKET *)b64_decode(decipher_buffer, strlen(decipher_buffer));
         if (packet->header.message_type != expected_msg_type)
         {
             ERROR("Expected %c message type, received %c\n", expected_msg_type, packet->header.message_type);
@@ -88,6 +92,10 @@ int read_bytes_ciphered(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *
 
 MESSAGE *read_message()
 {
+    if (sodium_init() < 0) {
+        return NULL; 
+    }
+
     MESSAGE *msg = NULL;
     size_t len;
 
@@ -98,8 +106,7 @@ MESSAGE *read_message()
         return NULL;
     }
 
-    TRACE("response_port: %d\npublic_key: %s\nnouce: %s\n", shake_msg->response_port, shake_msg->public_key, shake_msg->nonce);
-    TRACE("Len of public key: %zu\n", strlen((const char *)shake_msg->public_key));
+    TRACE("response_port: %s\nclient_key: %s\nnouce: %s\n", b64_encode((unsigned char *)&shake_msg->response_port, sizeof(shake_msg->response_port)), b64_encode(shake_msg->public_key, crypto_box_PUBLICKEYBYTES), b64_encode(shake_msg->nonce, crypto_box_NONCEBYTES));
 
     unsigned char server_public_key[crypto_box_PUBLICKEYBYTES];
     unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
@@ -110,8 +117,7 @@ MESSAGE *read_message()
     memcpy(response.public_key, server_public_key, crypto_box_PUBLICKEYBYTES);
     memcpy(response.nonce, shake_msg->nonce, crypto_box_NONCEBYTES);
 
-    TRACE("Sending server public key: %s\n", response.public_key);
-    TRACE("Len of server public key: %zu\n", strlen((const char *)response.public_key));
+    TRACE("Sending server public key: %s\n", b64_encode(server_public_key, crypto_box_PUBLICKEYBYTES));
 
     if (send_memory_zone(&response, sizeof(response), HAND_SHAKE, shake_msg->response_port)) {
         return NULL;
