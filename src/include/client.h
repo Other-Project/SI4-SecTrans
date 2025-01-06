@@ -45,9 +45,9 @@ int send_memory_zone_encrypted(void *start, size_t len, MESSAGE_TYPE msg_type, u
 
     PACKET packet;
     packet.header.message_type = msg_type;
-    packet.header.total_size = len;
     packet.header.index = 0;
-    packet.header.count = CEIL_DIV(packet.header.total_size, sizeof(packet.content));
+    packet.header.count = CEIL_DIV(len, sizeof(packet.content));
+    packet.header.total_size = len + (packet.header.count) * crypto_box_MACBYTES;
 
     int hasError = 0;
     for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content) - crypto_box_MACBYTES, packet.header.index++)
@@ -116,7 +116,7 @@ int send_message(MESSAGE *message, int port)
 
     TRACE("Received server public key: %s\n", b64_encode(response->public_key, crypto_box_PUBLICKEYBYTES));
 
-    send_memory_zone_encrypted(message, sizeof(*message) + strlen(message->content) + crypto_box_MACBYTES, TRANSFERT, nonce, client_private_key, response->public_key, port);
+    send_memory_zone_encrypted(message, sizeof(*message) + strlen(message->content), TRANSFERT, nonce, client_private_key, response->public_key, port);
 
     err = stopserver();
     return err;

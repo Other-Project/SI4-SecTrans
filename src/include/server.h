@@ -87,8 +87,8 @@ int read_bytes_ciphered(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *
             *decoded = malloc(packet->header.total_size);
             *decoded_len = packet->header.total_size;
         }
-        size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content) : sizeof(packet->content);
-        memcpy(*decoded + sizeof(packet->content) * packet->header.index, packet->content, content_size);
+        size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content): sizeof(packet->content);
+        memcpy(*decoded + (sizeof(packet->content) - crypto_box_MACBYTES) * packet->header.index, packet->content, content_size);
         packet_received++;
     }
     return 0;
