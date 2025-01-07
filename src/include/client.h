@@ -46,13 +46,14 @@ int send_memory_zone_encrypted(void *start, size_t len, MESSAGE_TYPE msg_type, u
     PACKET packet;
     packet.header.message_type = msg_type;
     packet.header.index = 0;
-    packet.header.count = CEIL_DIV(len, sizeof(packet.content));
-    packet.header.total_size = len + (packet.header.count) * crypto_box_MACBYTES;
+    size_t usefull_packet_content_size = sizeof(packet.content) - crypto_box_MACBYTES;
+    packet.header.count = CEIL_DIV(len, usefull_packet_content_size);
+    packet.header.total_size = len;
 
     int hasError = 0;
-    for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content) - crypto_box_MACBYTES, packet.header.index++)
+    for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += usefull_packet_content_size, packet.header.index++)
     {
-        memcpy(packet.content, msg_ptr, sizeof(packet.content) - crypto_box_MACBYTES);
+        memcpy(packet.content, msg_ptr, usefull_packet_content_size);
 
         unsigned char *encrypted_buffer = malloc(sizeof(PACKET));
 

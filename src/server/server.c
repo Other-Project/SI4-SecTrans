@@ -15,7 +15,6 @@ void stopServer(int _)
 void handle_upload_message(MESSAGE *message)
 {
 	LOG("Received upload request for file: %s\n", message->filename);
-	TRACE("\t%s\n", message->content);
 }
 
 void handle_download_message(MESSAGE *message)

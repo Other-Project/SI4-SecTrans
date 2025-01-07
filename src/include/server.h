@@ -87,8 +87,11 @@ int read_bytes_ciphered(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *
             *decoded = malloc(packet->header.total_size);
             *decoded_len = packet->header.total_size;
         }
-        size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content): sizeof(packet->content);
-        memcpy(*decoded + (sizeof(packet->content) - crypto_box_MACBYTES) * packet->header.index, packet->content, content_size);
+
+        size_t usefull_packet_content_size = sizeof(packet->content) - crypto_box_MACBYTES;
+        size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % usefull_packet_content_size: usefull_packet_content_size;
+        TRACE("Copying %zu bytes to decoded buffer\n", content_size);
+        memcpy(*decoded + usefull_packet_content_size * packet->header.index, packet->content, content_size);
         packet_received++;
     }
     return 0;
