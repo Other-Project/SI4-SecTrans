@@ -40,7 +40,7 @@ MESSAGE *upload_message(char filename[])
                 ERROR("Failed to return at the start of file when uploading message");
                 exit(1);
             }
-            size_t newLen = fread(content, sizeof(char), buffer_size, file);
+            size_t newLen = fread(content, sizeof(char), buffer_size+1, file);
             if (ferror(file) != 0)
             {
                 ERROR("Error while reading file");
@@ -59,9 +59,11 @@ MESSAGE *upload_message(char filename[])
         exit(1);
     }
     fclose(file);
-    size_t encoded_size = 4 * ((buffer_size + 1) / 3);
-    char *buffer_64 = b64_encode((unsigned char *)content, encoded_size + 1);
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + encoded_size + 1);
+    printf("Buffer size: %ld\n", buffer_size);
+    size_t encoded_size = 4 * ((buffer_size + 2) / 3);
+    printf("Encoded size: %zu\n", encoded_size);
+    char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + encoded_size);
     msg->action_type = UPLOAD;
     strcpy(msg->filename, filename);
     memcpy(msg->content, buffer_64, encoded_size);
@@ -72,7 +74,7 @@ MESSAGE *upload_message(char filename[])
 
 void download_message(char filename[])
 {
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE));
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + 5);
     msg->action_type = DOWNLOAD;
     strcpy(msg->filename, filename);
     strcpy(msg->content, "5001");
@@ -102,9 +104,9 @@ void download_message(char filename[])
                 exit(1);
             }
             size_t decoded_size = (strlen(message->content)) * 3 / 4 + 1;
-            char *buffer = (char *)b64_decode(message->content, MAX_DECODED_SIZE);
+            char *buffer = (char *)b64_decode(message->content, strlen(message->content));
             size_t buffer_size = strlen(buffer);
-            size_t written = fwrite(buffer, sizeof(char), (buffer_size < decoded_size && (decoded_size - buffer_size) < 4) ? (buffer_size) : (decoded_size), file);
+            size_t written = fwrite(buffer, sizeof(char), decoded_size, file);
             fclose(file);
             free(buffer);
             stopServer(0);
@@ -119,7 +121,7 @@ void download_message(char filename[])
 
 void list_message()
 {
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE));
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + 5);
     msg->action_type = LIST;
     msg->filename[0] = '\0';
     strcpy(msg->content, "5001");

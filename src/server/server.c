@@ -34,10 +34,12 @@ void handle_upload_message(MESSAGE *message)
 		ERROR("Can't create file for uploading");
 		exit(1);
 	}
-	size_t decoded_size = (strlen(message->content)) * 3 / 4 + 1;
-	char *buffer = (char *)b64_decode(message->content, MAX_DECODED_SIZE);
+	size_t decoded_size = (strlen(message->content)) * 3 / 4;
+	printf("Decoded size: %zu\n", decoded_size);
+	printf("strlen(message->content): %zu\n", strlen(message->content));
+	char *buffer = (char *)b64_decode(message->content, strlen(message->content));
 	size_t buffer_size = strlen(buffer);
-	size_t written = fwrite(buffer, sizeof(char), (buffer_size < decoded_size && (decoded_size - buffer_size) < 4) ? (buffer_size) : (decoded_size), file);
+	size_t written = fwrite(buffer, sizeof(char), decoded_size, file);
 	fclose(file);
 	free(buffer);
 }
@@ -101,7 +103,9 @@ void handle_download_message(MESSAGE *message)
 void handle_list_message(MESSAGE *messageReceived)
 {
 	LOG("Received list request\n");
-	char *files = (char *)malloc(MAX_DECODED_SIZE);
+	int filesLength = 10;
+	char *files = (char *)malloc(filesLength);
+	files[0] = '\0';
 	DIR *dir;
 	struct dirent *ent;
 	if ((dir = opendir("../src/server/files")) != NULL)
@@ -110,6 +114,20 @@ void handle_list_message(MESSAGE *messageReceived)
 		{
 			if (ent->d_name[0] != '.' && strcmp(ent->d_name, "..") != 0)
 			{
+				while (strlen(files) + strlen(ent->d_name) + 1 > filesLength)
+				{
+					filesLength *= 2;
+					char *tmp = (char *)realloc(files, filesLength);
+					if (tmp != NULL)
+					{
+						files = tmp;
+					}
+					else
+					{
+						free(files);
+						FATAL("Failed to reallocate memory\n");
+					}
+				}
 				strcat(files, ent->d_name);
 				strcat(files, "\n");
 			}
@@ -126,6 +144,7 @@ void handle_list_message(MESSAGE *messageReceived)
 	if (send_message(message, atoi(messageReceived->content)))
 		FATAL("Error sending message\n");
 	free(files);
+	free(message);
 }
 
 int main(int argc, char **argv)
@@ -133,7 +152,6 @@ int main(int argc, char **argv)
 	LOG("Starting server\n");
 	signal(SIGINT, stopServer);
 	startserver(SERVER_PORT);
-
 	while (1)
 	{
 		MESSAGE *message = read_message();
