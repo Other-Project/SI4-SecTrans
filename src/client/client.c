@@ -65,7 +65,8 @@ MESSAGE *upload_message(char filename[])
     char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
     MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + encoded_size);
     msg->action_type = UPLOAD;
-    strcpy(msg->filename, filename);
+    char *end = stpcpy(msg->filename, filename);
+    bzero(end, msg->content - end);
     memcpy(msg->content, buffer_64, encoded_size);
     free(content);
     free(buffer_64);
