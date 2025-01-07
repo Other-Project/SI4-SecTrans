@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <strings.h>
 #include "b64.h"
 #include "common.h"
 #include "message.h"
@@ -19,7 +20,9 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port)
     int hasError = 0;
     for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += sizeof(packet.content), packet.header.index++)
     {
-        memcpy(packet.content, msg_ptr, sizeof(packet.content));
+        size_t content_len = packet.header.index == packet.header.count - 1 ? len % sizeof(packet.content) : sizeof(packet.content);
+        memcpy(packet.content, msg_ptr, content_len);
+        bzero(packet.content + content_len, sizeof(packet.content) - content_len);
         char *buffer = b64_encode((unsigned char *)&packet, sizeof(PACKET));
         LOG("Sending packet [%c] %d/%d\n", packet.header.message_type, packet.header.index + 1, packet.header.count);
         TRACE("\t%s\n", buffer);
