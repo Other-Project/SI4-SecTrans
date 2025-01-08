@@ -23,7 +23,7 @@ char *retrieve_downloadable_filenames(char *directory)
     {
         while ((ent = readdir(dir)) != NULL)
         {
-            if (ent->d_name[0] != '.' && strcmp(ent->d_name, "..") != 0)
+            if (ent->d_name[0] != '.')
             {
                 fileCount++;
                 while (strlen(files) + strlen(ent->d_name) + 1 > filesLength)
