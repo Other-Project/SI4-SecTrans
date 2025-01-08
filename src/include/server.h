@@ -7,6 +7,7 @@
 #include "b64.h"
 #include "message.h"
 #include "client.h"
+#include "file.h"
 
 int startserver(int port);
 int stopserver();

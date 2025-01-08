@@ -22,43 +22,7 @@ void stopServer(int _)
 MESSAGE *upload_message(char filename[])
 {
     char *content = NULL;
-    long buffer_size;
-    FILE *file = fopen(filename, "r");
-    if (file != NULL)
-    {
-        if (fseek(file, 0L, SEEK_END) == 0)
-        {
-            buffer_size = ftell(file);
-            if (buffer_size == -1)
-            {
-                ERROR("Failed to create buffer size when uploading message");
-                exit(1);
-            }
-            content = malloc(sizeof(char) * (buffer_size + 1));
-            if (fseek(file, 0L, SEEK_SET) != 0)
-            {
-                ERROR("Failed to return at the start of file when uploading message");
-                exit(1);
-            }
-            size_t newLen = fread(content, sizeof(char), buffer_size, file);
-            if (ferror(file) != 0)
-            {
-                ERROR("Error while reading file");
-                exit(1);
-            }
-        }
-        else
-        {
-            ERROR("Can't go to the end of the file");
-            exit(1);
-        }
-    }
-    else
-    {
-        ERROR("Can't read the file");
-        exit(1);
-    }
-    fclose(file);
+    long buffer_size = get_file_content(&content, filename);
     char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
     MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64));
     msg->action_type = UPLOAD;
@@ -90,25 +54,7 @@ void download_message(char filename[])
         {
         case DOWNLOAD:
             LOG("Received download message\n");
-            struct stat st = {0};
-            if (stat("../src/client/files", &st) == -1)
-            {
-                mkdir("../src/client/files", 0700);
-            }
-            char filepath[1024];
-            snprintf(filepath, sizeof(filepath), "../src/client/files/%s", basename(message->filename));
-            FILE *file = fopen(filepath, "wb");
-            if (file == NULL)
-            {
-                ERROR("Can't create file for uploading");
-                exit(1);
-            }
-            size_t decoded_size;
-            char *buffer = (char *)b64_decode_ex(message->content, strlen(message->content), &decoded_size);
-            size_t buffer_size = strlen(buffer);
-            size_t written = fwrite(buffer, sizeof(char), decoded_size, file);
-            fclose(file);
-            free(buffer);
+            create_file_from_message(message, "../src/client/files/");
             stopServer(0);
             return;
         default:
@@ -139,7 +85,7 @@ void list_message()
         {
         case LIST:
             LOG("Received list message\n");
-            printf("Files on server:\n\n%s\n", message->content);
+            printf("Files on server:\n\n%s", message->content);
             free(message);
             stopServer(0);
             return;
