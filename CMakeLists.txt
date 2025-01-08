@@ -4,26 +4,14 @@ project(sectrans VERSION 1.0 LANGUAGES C)
 include(FetchB64.cmake)
 include(FetchSodium.cmake)
 
-include_directories(src/include)
-link_directories(src/include)
+include_directories(src/include src/client src/server)
+link_directories(src/include src/client src/server)
 
-add_library(client_message src/client/client_message.c)
-add_library(server_message src/server/server_message.c)
-add_library(client_utils src/client/client_utils.c)
+add_executable(${PROJECT_NAME}_server src/server/server.c src/server/server_message.c src/client/client_utils.c)
+add_executable(${PROJECT_NAME}_client src/client/client.c src/client/client_message.c src/client/client_utils.c)
 
-target_include_directories(client_utils PRIVATE src/include)
-target_include_directories(client_message PRIVATE src/include)
-target_include_directories(server_message PRIVATE src/include)
-
-target_link_libraries(client_utils PRIVATE b64c sodium)
-target_link_libraries(client_message PRIVATE client_utils b64c sodium)
-target_link_libraries(server_message PRIVATE client_utils b64c sodium)
-
-add_executable(${PROJECT_NAME}_server src/server/server.c)
-add_executable(${PROJECT_NAME}_client src/client/client.c)
-
-target_link_libraries(${PROJECT_NAME}_client client server client_utils client_message b64c sodium)
-target_link_libraries(${PROJECT_NAME}_server server client client_utils server_message b64c sodium)
+target_link_libraries(${PROJECT_NAME}_client client server b64c sodium)
+target_link_libraries(${PROJECT_NAME}_server server client b64c sodium)
 
 # TESTS
 
