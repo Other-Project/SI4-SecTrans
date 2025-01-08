@@ -22,7 +22,9 @@ void stopServer(int _)
 MESSAGE *upload_message(char filename[])
 {
     char *content = NULL;
-    long buffer_size = get_file_content(&content, filename);
+    long buffer_size;
+    if ((buffer_size = get_file_content(&content, filename)) == -1)
+        ERROR("Failed to obtain file content\n");
     char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
     MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64));
     msg->action_type = UPLOAD;
@@ -54,7 +56,8 @@ void download_message(char filename[])
         {
         case DOWNLOAD:
             LOG("Received download message\n");
-            create_file_from_message(message, "../src/client/files/");
+            if (create_file_from_message(message, DIRECTORY_CLIENT) == -1)
+                ERROR("Failed to create file from message\n");
             stopServer(0);
             return;
         default:

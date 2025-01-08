@@ -8,6 +8,8 @@
 #define CLIENT_PORT 5001
 #define MAX_PACKET_LENGTH 1024
 #define MAX_FILENAME_LENGTH 256
+#define DIRECTORY_SERVER "files/"
+#define DIRECTORY_CLIENT "downloaded_files/"
 
 #ifdef NDEBUG
 #define TRACE(...)
