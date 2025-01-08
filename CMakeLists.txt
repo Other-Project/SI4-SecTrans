@@ -4,8 +4,8 @@ project(sectrans VERSION 1.0 LANGUAGES C)
 include(FetchB64.cmake)
 include(FetchSodium.cmake)
 
-include_directories(src/include src/client src/server)
-link_directories(src/include src/client src/server)
+include_directories(src/include)
+link_directories(src/include)
 
 add_executable(${PROJECT_NAME}_server src/server/server.c src/server/server_message.c src/client/client_utils.c)
 add_executable(${PROJECT_NAME}_client src/client/client.c src/client/client_message.c src/client/client_utils.c)
