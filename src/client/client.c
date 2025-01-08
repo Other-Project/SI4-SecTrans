@@ -40,7 +40,7 @@ MESSAGE *upload_message(char filename[])
                 ERROR("Failed to return at the start of file when uploading message");
                 exit(1);
             }
-            size_t newLen = fread(content, sizeof(char), buffer_size+1, file);
+            size_t newLen = fread(content, sizeof(char), buffer_size, file);
             if (ferror(file) != 0)
             {
                 ERROR("Error while reading file");
@@ -59,15 +59,12 @@ MESSAGE *upload_message(char filename[])
         exit(1);
     }
     fclose(file);
-    printf("Buffer size: %ld\n", buffer_size);
-    size_t encoded_size = 4 * ((buffer_size + 2) / 3);
-    printf("Encoded size: %zu\n", encoded_size);
     char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + encoded_size);
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64));
     msg->action_type = UPLOAD;
     char *end = stpcpy(msg->filename, filename);
     bzero(end, msg->content - end);
-    memcpy(msg->content, buffer_64, encoded_size);
+    strcpy(msg->content, buffer_64);
     free(content);
     free(buffer_64);
     return msg;
@@ -86,7 +83,9 @@ void download_message(char filename[])
     free(msg);
     while (1)
     {
-        MESSAGE *message = read_message();
+        MESSAGE *message;
+        if (read_message(&message))
+            FATAL("Couldn't read server response\n");
         switch (message->action_type)
         {
         case DOWNLOAD:
@@ -104,8 +103,8 @@ void download_message(char filename[])
                 ERROR("Can't create file for uploading");
                 exit(1);
             }
-            size_t decoded_size = (strlen(message->content)) * 3 / 4 + 1;
-            char *buffer = (char *)b64_decode(message->content, strlen(message->content));
+            size_t decoded_size;
+            char *buffer = (char *)b64_decode_ex(message->content, strlen(message->content), &decoded_size);
             size_t buffer_size = strlen(buffer);
             size_t written = fwrite(buffer, sizeof(char), decoded_size, file);
             fclose(file);
@@ -133,7 +132,9 @@ void list_message()
     startserver(CLIENT_PORT);
     while (1)
     {
-        MESSAGE *message = read_message();
+        MESSAGE *message = NULL;
+        if (read_message(&message))
+            FATAL("Couldn't read server response\n");
         switch (message->action_type)
         {
         case LIST:

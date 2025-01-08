@@ -34,10 +34,8 @@ void handle_upload_message(MESSAGE *message)
 		ERROR("Can't create file for uploading");
 		exit(1);
 	}
-	size_t decoded_size = (strlen(message->content)) * 3 / 4;
-	printf("Decoded size: %zu\n", decoded_size);
-	printf("strlen(message->content): %zu\n", strlen(message->content));
-	char *buffer = (char *)b64_decode(message->content, strlen(message->content));
+	size_t decoded_size;
+	char *buffer = (char *)b64_decode_ex(message->content, strlen(message->content), &decoded_size);
 	size_t buffer_size = strlen(buffer);
 	size_t written = fwrite(buffer, sizeof(char), decoded_size, file);
 	fclose(file);
@@ -88,12 +86,11 @@ void handle_download_message(MESSAGE *message)
 		exit(1);
 	}
 	fclose(file);
-	size_t encoded_size = 4 * ((buffer_size + 1) / 3);
-	char *buffer_64 = b64_encode((unsigned char *)content, encoded_size + 1);
-	MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + encoded_size + 1);
+	char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
+	MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64));
 	msg->action_type = DOWNLOAD;
 	strcpy(msg->filename, filename);
-	memcpy(msg->content, buffer_64, encoded_size);
+	strcpy(msg->content, buffer_64);
 	free(content);
 	free(buffer_64);
 	if (send_message(msg, atoi(message->content)))
@@ -154,7 +151,12 @@ int main(int argc, char **argv)
 	startserver(SERVER_PORT);
 	while (1)
 	{
-		MESSAGE *message = read_message();
+		MESSAGE *message = NULL;
+		if (read_message(&message))
+		{
+			ERROR("Couldn't read message\n");
+			continue;
+		}
 		switch (message->action_type)
 		{
 		case UPLOAD:
