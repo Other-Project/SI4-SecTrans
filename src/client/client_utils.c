@@ -78,8 +78,10 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, u
     int hasError = 0;
     for (char *msg_ptr = start; !hasError && packet.header.index < packet.header.count; msg_ptr += usefull_packet_content_size, packet.header.index++)
     {
-        memcpy(packet.content, msg_ptr, usefull_packet_content_size);
-
+        size_t content_len = packet.header.index == packet.header.count - 1 ? len % usefull_packet_content_size : usefull_packet_content_size;
+        memcpy(packet.content, msg_ptr, content_len);
+        bzero(packet.content + content_len, sizeof(packet.content) - content_len);
+        
         unsigned char *encrypted_buffer = nonce != NULL ? malloc(sizeof(PACKET)) : (unsigned char *)&packet;
 
         if (nonce != NULL && crypto_box_easy(encrypted_buffer, (unsigned char *)&packet, sizeof(PACKET) - crypto_box_MACBYTES, nonce, server_public_key, client_private_key) != 0)
