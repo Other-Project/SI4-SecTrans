@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
-#include "client.h"
+#include "client_message.h"
 #include "common.h"
 
 #define CHECK_ARGS(nb, msg) \

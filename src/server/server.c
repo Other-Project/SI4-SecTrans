@@ -2,7 +2,7 @@
 #include <signal.h>
 #include <string.h>
 #include <stdlib.h>
-#include "server.h"
+#include "server_message.h"
 #include "common.h"
 
 void stopServer(int _)
