@@ -16,8 +16,8 @@
 #endif
 #define LOG(...) printf(__VA_ARGS__)
 #define ERROR(...) fprintf(stderr, __VA_ARGS__)
-#define FATAL(...)                  \
-	{                                \
+#define FATAL(...)                    \
+	{                                 \
 		fprintf(stderr, __VA_ARGS__); \
 		exit(1);                      \
 	}

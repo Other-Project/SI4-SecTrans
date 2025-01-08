@@ -8,4 +8,3 @@ int startserver(int port);
 int stopserver();
 
 #endif
-

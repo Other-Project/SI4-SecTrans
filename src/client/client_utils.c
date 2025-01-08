@@ -1,6 +1,6 @@
 #include "client_utils.h"
 
-int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_len, unsigned char* nonce, unsigned char* server_private_key, unsigned char* client_public_key)
+int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_len, unsigned char *nonce, unsigned char *server_private_key, unsigned char *client_public_key)
 {
     char buffer[MAX_PACKET_LENGTH];
     PACKET *packet = NULL;
@@ -37,7 +37,7 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
             free(decoded_buffer);
         }
 
-        packet = (PACKET *)decrypted_buffer ? (PACKET *)decrypted_buffer : (PACKET *) decoded_buffer;
+        packet = (PACKET *)decrypted_buffer ? (PACKET *)decrypted_buffer : (PACKET *)decoded_buffer;
 
         if (packet->header.message_type != expected_msg_type)
         {
@@ -54,7 +54,7 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
         }
 
         size_t usefull_packet_content_size = nonce ? sizeof(packet->content) - crypto_box_MACBYTES : sizeof(packet->content);
-        size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % usefull_packet_content_size: usefull_packet_content_size;
+        size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % usefull_packet_content_size : usefull_packet_content_size;
         TRACE("Copying %zu bytes to decoded buffer\n", content_size);
         memcpy(*decoded + usefull_packet_content_size * packet->header.index, packet->content, content_size);
         packet_received++;
@@ -62,7 +62,7 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
     return 0;
 }
 
-int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, unsigned char* nonce, unsigned char* client_private_key, unsigned char* server_public_key)
+int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, unsigned char *nonce, unsigned char *client_private_key, unsigned char *server_public_key)
 {
     assert(sizeof(PACKET) <= MAX_SIZE_BEFORE_B64(MAX_PACKET_LENGTH));
 
@@ -81,7 +81,7 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, u
         size_t content_len = packet.header.index == packet.header.count - 1 ? len % usefull_packet_content_size : usefull_packet_content_size;
         memcpy(packet.content, msg_ptr, content_len);
         bzero(packet.content + content_len, sizeof(packet.content) - content_len);
-        
+
         unsigned char *encrypted_buffer = nonce != NULL ? malloc(sizeof(PACKET)) : (unsigned char *)&packet;
 
         if (nonce != NULL && crypto_box_easy(encrypted_buffer, (unsigned char *)&packet, sizeof(PACKET) - crypto_box_MACBYTES, nonce, server_public_key, client_private_key) != 0)
@@ -92,18 +92,20 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, u
         }
 
         char *encoded_buffer = b64_encode(encrypted_buffer, sizeof(PACKET));
-        if (encoded_buffer == NULL) {
+        if (encoded_buffer == NULL)
+        {
             ERROR("Failed to encode Base64 message\n");
             free(encrypted_buffer);
             return -1;
         }
 
-        LOG("Sending packet [%c] %d/%d\n", packet.header.message_type, packet.header.index + 1, packet.header.count);   
+        LOG("Sending packet [%c] %d/%d\n", packet.header.message_type, packet.header.index + 1, packet.header.count);
 
         TRACE("\t%s\n", encoded_buffer);
 
         hasError = sndmsg(encoded_buffer, port);
-        if (nonce) free(encrypted_buffer);
+        if (nonce)
+            free(encrypted_buffer);
         free(encoded_buffer);
     }
     return hasError;
