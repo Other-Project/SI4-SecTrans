@@ -72,22 +72,17 @@ int main(int argc, char **argv)
     HAND_SHAKE_MESSAGE *handshake_message = NULL;
     
     generate_encryption_tools(&send_encryption_tools);
-	if (read_message((void**)&handshake_message, NULL))
-        FATAL("Failed to read handshake\n");
-
-	TRACE("%d\n", handshake_message->response_port);
-
-    if (send_handshake_message(handshake_message->response_port, SERVER_PORT, &send_encryption_tools))
-        FATAL("Failed to send handshake\n");
-
-	memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
-
-    memcpy(read_encryption_tools.private_key, send_encryption_tools.private_key, crypto_box_SECRETKEYBYTES);
-    memcpy(read_encryption_tools.nonce, handshake_message->nonce, crypto_box_NONCEBYTES);
-    memcpy(read_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
-
 	while (1)
 	{
+		if (read_message((void**)&handshake_message, NULL))
+        	FATAL("Failed to read handshake\n");
+		if (send_handshake_message(handshake_message->response_port, SERVER_PORT, &send_encryption_tools))
+			FATAL("Failed to send handshake\n");
+		memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+		memcpy(read_encryption_tools.private_key, send_encryption_tools.private_key, crypto_box_SECRETKEYBYTES);
+		memcpy(read_encryption_tools.nonce, handshake_message->nonce, crypto_box_NONCEBYTES);
+		memcpy(read_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+
 		MESSAGE *message = NULL;
 		if (read_message((void**)&message, &read_encryption_tools))
 		{

@@ -100,17 +100,9 @@ int main(int argc, char *argv[])
     HAND_SHAKE_MESSAGE *handshake_message = NULL;
     
     generate_encryption_tools(&send_encryption_tools);
-    if (send_handshake_message(SERVER_PORT, CLIENT_PORT, &send_encryption_tools )) 
-        FATAL("Failed to send handshake\n");
 
-    if (read_message((void**)&handshake_message, NULL))
-        FATAL("Failed to read handshake\n");
-
-    memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
-
-    memcpy(read_encryption_tools.private_key, send_encryption_tools.private_key, crypto_box_SECRETKEYBYTES);
-    memcpy(read_encryption_tools.nonce, handshake_message->nonce, crypto_box_NONCEBYTES);
-    memcpy(read_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+    if (do_handshake_client(SERVER_PORT, CLIENT_PORT, &send_encryption_tools, &read_encryption_tools, handshake_message))
+        FATAL("Failed to do handshake\n");
 
     if (!strcmp(argv[1], "-up"))
     {

@@ -52,27 +52,20 @@
     return err;
 }*/
 
-int send_message(void *message, int port, ENCRYPTION_TOOLS *encryption_tools){
-    if (encryption_tools == NULL) {
-        HAND_SHAKE_MESSAGE *msg = (HAND_SHAKE_MESSAGE *)message;
-        TRACE("Sending handshake message\n");
-        TRACE("response_port: %d\n", msg->response_port);
-        char *encoded_key = b64_encode(msg->public_key, crypto_box_PUBLICKEYBYTES);
-        char *encoded_nonce = b64_encode(msg->nonce, crypto_box_NONCEBYTES);
-        TRACE("public_key: %s\nnouce: %s\n", encoded_key, encoded_nonce);
-        free(encoded_key);
-        free(encoded_nonce);
-        return send_memory_zone(msg, sizeof(*msg), HAND_SHAKE, port, NULL, NULL, NULL);
-    }
-    MESSAGE *msg = (MESSAGE *)message;
-    TRACE("Sending message\n");
-    return send_memory_zone(msg, sizeof(*msg) + strlen(msg->content) + 1, TRANSFERT, port, encryption_tools->nonce, encryption_tools->private_key, encryption_tools->public_key);
-}
+int do_handshake_client(int port, int response_port, ENCRYPTION_TOOLS *send_encryption_tools, ENCRYPTION_TOOLS *read_encryption_tools, HAND_SHAKE_MESSAGE *handshake_message){
+    int err;
+    
+    err = send_handshake_message(SERVER_PORT, CLIENT_PORT, send_encryption_tools);
+    if (err) 
+        return err;
+    err = read_message((void**)&handshake_message, NULL);
+    if (err) 
+        return err;
 
-int send_handshake_message(int port, int response_port, ENCRYPTION_TOOLS *encryption_tools){
-    HAND_SHAKE_MESSAGE msg;
-    msg.response_port = response_port;
-    memcpy(msg.public_key, encryption_tools->public_key, crypto_box_PUBLICKEYBYTES);
-    memcpy(msg.nonce, encryption_tools->nonce, crypto_box_NONCEBYTES);
-    return send_message(&msg, port, NULL);
+    memcpy(send_encryption_tools->public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+    memcpy(read_encryption_tools->private_key, send_encryption_tools->private_key, crypto_box_SECRETKEYBYTES);
+    memcpy(read_encryption_tools->nonce, handshake_message->nonce, crypto_box_NONCEBYTES);
+    memcpy(read_encryption_tools->public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+    free(handshake_message);
+    return 0;
 }

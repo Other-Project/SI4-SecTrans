@@ -4,5 +4,6 @@
 #include "client_utils.h"
 
 int read_message(void **msg, ENCRYPTION_TOOLS *encryption_tools);
+int do_handshake_server(int port, ENCRYPTION_TOOLS *send_encryption_tools, ENCRYPTION_TOOLS *read_encryption_tools, HAND_SHAKE_MESSAGE *handshake_message);
 
 #endif
