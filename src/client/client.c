@@ -19,12 +19,27 @@ void stopServer(int _)
     exit(0);
 }
 
+MESSAGE *wait_for_response(ACTION_TYPE expected_type)
+{
+    MESSAGE *message = NULL;
+    if (read_message(&message))
+        FATAL("Couldn't read server response\n");
+    if (message->action_type == expected_type)
+        return message;
+    else
+    {
+        ERROR("Received unexpected  action type %c\n", message->action_type);
+        free(message);
+        return wait_for_response(expected_type);
+    }
+}
+
 MESSAGE *upload_message(char filename[])
 {
     char *content = NULL;
     long buffer_size;
     if ((buffer_size = get_file_content(&content, filename)) == -1)
-        ERROR("Failed to obtain file content\n");
+        FATAL("Failed to obtain file content\n");
     char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
     MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64));
     msg->action_type = UPLOAD;
@@ -44,28 +59,22 @@ void download_message(char filename[])
     strcpy(msg->content, "5001");
     LOG("Sending message\n");
     startserver(CLIENT_PORT);
+    signal(SIGINT, stopServer);
     if (send_message(msg, SERVER_PORT))
         FATAL("Error sending message\n");
     free(msg);
-    while (1)
+    MESSAGE *response = wait_for_response(DOWNLOAD);
+    LOG("Received download message\n");
+    if (strcmp(response->content, "File not found") == 0)
     {
-        MESSAGE *message;
-        if (read_message(&message))
-            FATAL("Couldn't read server response\n");
-        switch (message->action_type)
-        {
-        case DOWNLOAD:
-            LOG("Received download message\n");
-            if (create_file_from_message(message, DIRECTORY_CLIENT) == -1)
-                ERROR("Failed to create file from message\n");
-            stopServer(0);
-            return;
-        default:
-            ERROR("Received unknown action type %c\n", message->action_type);
-            break;
-        }
-        free(message);
+        ERROR("Failed to download file\nPlease check the filename\n");
+        free(response);
+        stopServer(0);
+        return;
     }
+    if (create_file_from_message(response, DIRECTORY_CLIENT) == -1)
+        ERROR("Failed to create file from message\n");
+    stopServer(0);
 }
 
 void list_message()
@@ -79,25 +88,11 @@ void list_message()
         FATAL("Error sending message\n");
     free(msg);
     startserver(CLIENT_PORT);
-    while (1)
-    {
-        MESSAGE *message = NULL;
-        if (read_message(&message))
-            FATAL("Couldn't read server response\n");
-        switch (message->action_type)
-        {
-        case LIST:
-            LOG("Received list message\n");
-            printf("Files on server:\n\n%s", message->content);
-            free(message);
-            stopServer(0);
-            return;
-        default:
-            ERROR("Received unknown action type %c\n", message->action_type);
-            break;
-        }
-        free(message);
-    }
+    signal(SIGINT, stopServer);
+    MESSAGE *response = wait_for_response(LIST);
+    printf("Files on server:\n\n%s", response->content);
+    free(response);
+    stopServer(0);
 }
 
 int main(int argc, char *argv[])
@@ -106,8 +101,8 @@ int main(int argc, char *argv[])
 
     if (!strcmp(argv[1], "-up"))
     {
-        MESSAGE *message;
         CHECK_ARGS(3, "The filename must be provided");
+        MESSAGE *message;
         message = upload_message(argv[2]);
         LOG("Sending message\n");
         if (send_message(message, SERVER_PORT))

@@ -10,6 +10,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "server.h"
+#include "client.h"
+#include "common.h"
 
 char *retrieve_downloadable_filenames(char *directory)
 {
@@ -31,9 +34,7 @@ char *retrieve_downloadable_filenames(char *directory)
                     filesLength *= 2;
                     char *tmp = (char *)realloc(files, filesLength);
                     if (tmp != NULL)
-                    {
                         files = tmp;
-                    }
                     else
                     {
                         free(files);
@@ -46,14 +47,10 @@ char *retrieve_downloadable_filenames(char *directory)
         }
         closedir(dir);
         if (fileCount == 0)
-        {
             strcpy(files, "No file downloadable\n");
-        }
     }
     else
-    {
         strcpy(files, "No file downloadable\n");
-    }
     return files;
 }
 
@@ -61,40 +58,36 @@ long get_file_content(char **content, char *filename)
 {
     long file_size;
     FILE *file = fopen(filename, "r");
-    if (file != NULL)
+    if (file == NULL)
     {
-        if (fseek(file, 0L, SEEK_END) == 0)
-        {
-            file_size = ftell(file);
-            if (file_size == -1)
-            {
-                ERROR("Failed to obtain file size");
-                return -1;
-            }
-            *content = malloc(sizeof(char) * (file_size + 1));
-            if (fseek(file, 0L, SEEK_SET) != 0)
-            {
-                ERROR("Failed to return at the start of file when uploading message");
-                return -1;
-            }
-            size_t newLen = fread(*content, sizeof(char), file_size, file);
-            if (ferror(file) != 0)
-            {
-                ERROR("Error while reading file");
-                return -1;
-            }
-        }
-        else
-        {
-            ERROR("Can't go to the end of the file");
-            return -1;
-        }
-    }
-    else
-    {
-        ERROR("File not found. The file %s does not seem to exist", filename);
+        ERROR("File not found. The file %s does not seem to exist\n", filename);
         return -1;
     }
+    if (fseek(file, 0L, SEEK_END) != 0)
+    {
+        ERROR("Can't go to the end of the file");
+        return -1;
+    }
+
+    file_size = ftell(file);
+    if (file_size == -1)
+    {
+        ERROR("Failed to obtain file size");
+        return -1;
+    }
+    *content = malloc(sizeof(char) * (file_size + 1));
+    if (fseek(file, 0L, SEEK_SET) != 0)
+    {
+        ERROR("Failed to return at the start of file when uploading message");
+        return -1;
+    }
+    size_t newLen = fread(*content, sizeof(char), file_size, file);
+    if (ferror(file) != 0)
+    {
+        ERROR("Error while reading file");
+        return -1;
+    }
+
     fclose(file);
     return file_size;
 }
@@ -106,8 +99,9 @@ int create_file_from_message(MESSAGE *message, char *path_to_download)
     {
         mkdir(path_to_download, 0700);
     }
-    char *filepath = malloc(strlen(path_to_download) + strlen(basename(message->filename)) + 1);
-    snprintf(filepath, strlen(path_to_download) + strlen(basename(message->filename)) + 1, "%s%s", path_to_download, basename(message->filename));
+    size_t path_len = strlen(path_to_download) + strlen(basename(message->filename)) + 1;
+    char *filepath = malloc(path_len);
+    snprintf(filepath, path_len, "%s%s", path_to_download, basename(message->filename));
     FILE *file = fopen(filepath, "wb");
     if (file == NULL)
     {

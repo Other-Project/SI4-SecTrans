@@ -19,6 +19,7 @@ void stopServer(int _)
 
 void handle_upload_message(MESSAGE *message)
 {
+	strcpy(message->filename, basename(message->filename));
 	LOG("Received upload request for file: %s\n", message->filename);
 	if (create_file_from_message(message, DIRECTORY_SERVER) == -1)
 		ERROR("Failed to create file from message\n");
@@ -26,13 +27,20 @@ void handle_upload_message(MESSAGE *message)
 
 MESSAGE *handle_download_message(MESSAGE *message)
 {
+	strcpy(message->filename, basename(message->filename));
 	LOG("Received download request for file: %s\n", message->filename);
 	char *content = NULL;
 	char filename[1024];
 	snprintf(filename, sizeof(filename), "%s%s", DIRECTORY_SERVER, message->filename);
 	long buffer_size;
 	if ((buffer_size = get_file_content(&content, filename)) == -1)
+	{
+		MESSAGE *messageNotFound = malloc(sizeof(MESSAGE)+16);
+		messageNotFound->action_type = DOWNLOAD;
+		strcpy(messageNotFound->content, "File not found");
 		ERROR("Failed to obtain file content\n");
+		return messageNotFound;
+	}
 	char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
 	MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64));
 	msg->action_type = DOWNLOAD;
