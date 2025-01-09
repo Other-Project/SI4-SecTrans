@@ -49,17 +49,29 @@
     return err;
 }*/
 
-int read_message(void *msg, ENCRYPTION_TOOLS *encryption_tools){
+int read_message(void **msg, ENCRYPTION_TOOLS *encryption_tools){
 
     size_t len;
+    int err;
 
     if (encryption_tools == NULL) {
-        int err = read_bytes(HAND_SHAKE, (void **)msg, &len, NULL, NULL, NULL);
-        if (!err)
-            TRACE("Message of %zu bytes received\n", len);
-        return err;
+        err = read_bytes(HAND_SHAKE, msg, &len, NULL, NULL, NULL);
+        if (!err) {
+            char *other_public_key = b64_encode(((HAND_SHAKE_MESSAGE*)*msg)->public_key, crypto_box_PUBLICKEYBYTES);
+            char *other_nonce = b64_encode(((HAND_SHAKE_MESSAGE*)*msg)->nonce, crypto_box_NONCEBYTES);
+            TRACE("Received public key: %s\n", other_public_key);
+            TRACE("Received nonce: %s\n", other_nonce);
+            TRACE("Received response port: %d\n", ((HAND_SHAKE_MESSAGE*)*msg)->response_port);
+            free(other_public_key);
+            free(other_nonce);
+        }
     }
-    return read_bytes(TRANSFERT, (void **)msg, &len, encryption_tools->nonce, encryption_tools->public_key, encryption_tools->private_key);
+    else {
+        err = read_bytes(TRANSFERT, msg, &len, encryption_tools->nonce, encryption_tools->public_key, encryption_tools->private_key);
+    }
+    if (!err) 
+        TRACE("Message of %zu bytes received\n", len);
+    return err;
 }
 
     

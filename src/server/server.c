@@ -3,13 +3,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
-#include <sodium.h>
-#include "server.h"
-#include "common.h"
 #include "file.h"
 #include "server_message.h"
 #include "client_message.h"
-
 
 void stopServer(int _)
 {
@@ -47,7 +43,7 @@ MESSAGE *handle_download_message(MESSAGE *message)
 	return msg;
 }
 
-void handle_list_message(MESSAGE *messageReceived, ENCRYPTION_TOOLS *send_encryption_tools)
+void handle_list_message(MESSAGE *messageReceived, ENCRYPTION_TOOLS *send_encryption_tools, int response_port)
 {
 	LOG("Received list request\n");
 	char *files = retrieve_downloadable_filenames(DIRECTORY_SERVER);
@@ -55,7 +51,7 @@ void handle_list_message(MESSAGE *messageReceived, ENCRYPTION_TOOLS *send_encryp
 	message->action_type = LIST;
 	bzero(message->filename, sizeof(message->filename));
 	strcpy(message->content, files);
-	if (send_message(message, atoi(messageReceived->content), send_encryption_tools))
+	if (send_message(message, response_port, send_encryption_tools))
 		ERROR("Error sending message\n");
 	free(files);
 	free(message);
@@ -76,9 +72,12 @@ int main(int argc, char **argv)
     HAND_SHAKE_MESSAGE *handshake_message = NULL;
     
     generate_encryption_tools(&send_encryption_tools);
-	if (read_message(handshake_message, NULL))
+	if (read_message((void**)&handshake_message, NULL))
         FATAL("Failed to read handshake\n");
-    if (send_handshake_message(SERVER_PORT, &send_encryption_tools)) 
+
+	TRACE("%d\n", handshake_message->response_port);
+
+    if (send_handshake_message(handshake_message->response_port, SERVER_PORT, &send_encryption_tools))
         FATAL("Failed to send handshake\n");
 
 	memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
@@ -90,7 +89,7 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		MESSAGE *message = NULL;
-		if (read_message(&message, &read_encryption_tools))
+		if (read_message((void**)&message, &read_encryption_tools))
 		{
 			ERROR("Couldn't read message\n");
 			continue;
@@ -105,7 +104,7 @@ int main(int argc, char **argv)
 				ERROR("Error sending message\n");
 			break;
 		case LIST:
-			handle_list_message(message, &send_encryption_tools);
+			handle_list_message(message, &send_encryption_tools, handshake_message->response_port);
 			break;
 		default:
 			ERROR("Received unknown action type %c\n", message->action_type);

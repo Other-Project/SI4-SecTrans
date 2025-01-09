@@ -54,15 +54,24 @@
 
 int send_message(void *message, int port, ENCRYPTION_TOOLS *encryption_tools){
     if (encryption_tools == NULL) {
-        return send_memory_zone((HAND_SHAKE_MESSAGE *)message, sizeof(*message), HAND_SHAKE, port, NULL, NULL, NULL);
+        HAND_SHAKE_MESSAGE *msg = (HAND_SHAKE_MESSAGE *)message;
+        TRACE("Sending handshake message\n");
+        TRACE("response_port: %d\n", msg->response_port);
+        char *encoded_key = b64_encode(msg->public_key, crypto_box_PUBLICKEYBYTES);
+        char *encoded_nonce = b64_encode(msg->nonce, crypto_box_NONCEBYTES);
+        TRACE("public_key: %s\nnouce: %s\n", encoded_key, encoded_nonce);
+        free(encoded_key);
+        free(encoded_nonce);
+        return send_memory_zone(msg, sizeof(*msg), HAND_SHAKE, port, NULL, NULL, NULL);
     }
     MESSAGE *msg = (MESSAGE *)message;
+    TRACE("Sending message\n");
     return send_memory_zone(msg, sizeof(*msg) + strlen(msg->content) + 1, TRANSFERT, port, encryption_tools->nonce, encryption_tools->private_key, encryption_tools->public_key);
 }
 
-int send_handshake_message(int port, ENCRYPTION_TOOLS *encryption_tools){
+int send_handshake_message(int port, int response_port, ENCRYPTION_TOOLS *encryption_tools){
     HAND_SHAKE_MESSAGE msg;
-    msg.response_port = CLIENT_PORT;
+    msg.response_port = response_port;
     memcpy(msg.public_key, encryption_tools->public_key, crypto_box_PUBLICKEYBYTES);
     memcpy(msg.nonce, encryption_tools->nonce, crypto_box_NONCEBYTES);
     return send_message(&msg, port, NULL);

@@ -7,9 +7,6 @@
 #include <libgen.h>
 #include <signal.h>
 #include "file.h"
-#include "common.h"
-#include "encryption.h"
-#include "client.h"
 #include "server_message.h"
 #include "client_message.h"
 
@@ -27,7 +24,7 @@ void stopServer(int _)
 MESSAGE *wait_for_response(ACTION_TYPE expected_type, ENCRYPTION_TOOLS *read_encryption_tools)
 {
     MESSAGE *message = NULL;
-    if (read_message(&message, read_encryption_tools))
+    if (read_message((void**)&message, read_encryption_tools))
         FATAL("Couldn't read server response\n");
     
     if (message->action_type == expected_type)
@@ -58,7 +55,6 @@ void download_message(char filename[], ENCRYPTION_TOOLS *read_encryption_tools, 
     strncpy(msg->filename, filename, sizeof(msg->filename));
     strcpy(msg->content, "5001");
     LOG("Sending message\n");
-    startserver(CLIENT_PORT);
     signal(SIGINT, stopServer);
     if (send_message(msg, SERVER_PORT, send_encryption_tools))
         FATAL("Error sending message\n");
@@ -83,7 +79,6 @@ void list_message(ENCRYPTION_TOOLS *read_encryption_tools, ENCRYPTION_TOOLS *sen
     if (send_message(msg, SERVER_PORT, send_encryption_tools))
         FATAL("Error sending message\n");
     free(msg);
-    startserver(CLIENT_PORT);
     signal(SIGINT, stopServer);
     MESSAGE *response = wait_for_response(LIST, read_encryption_tools);
     printf("Files on server:\n\n%s", response->content);
@@ -95,6 +90,7 @@ int main(int argc, char *argv[])
 {
     CHECK_ARGS(2, "Missing action argument");
 
+    startserver(CLIENT_PORT);
     ENCRYPTION_TOOLS read_encryption_tools;
     ENCRYPTION_TOOLS send_encryption_tools;
 
@@ -104,9 +100,10 @@ int main(int argc, char *argv[])
     HAND_SHAKE_MESSAGE *handshake_message = NULL;
     
     generate_encryption_tools(&send_encryption_tools);
-    if (send_handshake_message(SERVER_PORT, &send_encryption_tools)) 
+    if (send_handshake_message(SERVER_PORT, CLIENT_PORT, &send_encryption_tools )) 
         FATAL("Failed to send handshake\n");
-    if (read_message(handshake_message, NULL))
+
+    if (read_message((void**)&handshake_message, NULL))
         FATAL("Failed to read handshake\n");
 
     memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
