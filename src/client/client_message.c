@@ -21,7 +21,11 @@ int send_message(MESSAGE *message, int port)
     memcpy(shake_msg.public_key, client_public_key, crypto_box_PUBLICKEYBYTES);
     memcpy(shake_msg.nonce, nonce, crypto_box_NONCEBYTES);
 
-    TRACE("client_key: %s\nnouce: %s\n", b64_encode(shake_msg.public_key, crypto_box_PUBLICKEYBYTES), b64_encode(shake_msg.nonce, crypto_box_NONCEBYTES));
+    char *encoded_key = b64_encode(shake_msg.public_key, crypto_box_PUBLICKEYBYTES);
+    char *encoded_nonce = b64_encode(shake_msg.nonce, crypto_box_NONCEBYTES);
+    TRACE("client_key: %s\nnouce: %s\n", encoded_key, encoded_nonce);
+    free(encoded_key);
+    free(encoded_nonce);
 
     err = send_memory_zone(&shake_msg, sizeof(shake_msg), HAND_SHAKE, port, NULL, NULL, NULL);
     if (err)
@@ -34,8 +38,12 @@ int send_message(MESSAGE *message, int port)
     if (err)
         return err;
 
-    TRACE("Received server public key: %s\n", b64_encode(response->public_key, crypto_box_PUBLICKEYBYTES));
-    TRACE("Received server nonce: %s\n", b64_encode(response->nonce, crypto_box_NONCEBYTES));
+    char *encoded_response_key = b64_encode(response->public_key, crypto_box_PUBLICKEYBYTES);
+    char *encoded_response_nonce = b64_encode(response->nonce, crypto_box_NONCEBYTES);
+    TRACE("Received server public key: %s\n", encoded_response_key);
+    TRACE("Received server nonce: %s\n", encoded_response_nonce);
+    free(encoded_response_key);
+    free(encoded_response_nonce);
 
     send_memory_zone(message, sizeof(*message) + strlen(message->content), TRANSFERT, port, nonce, client_private_key, response->public_key);
 

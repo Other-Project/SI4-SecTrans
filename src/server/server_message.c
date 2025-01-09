@@ -14,7 +14,12 @@ MESSAGE *read_message()
     if (read_bytes(HAND_SHAKE, (void **)&shake_msg, &shake_len, NULL, NULL, NULL))
         return NULL;
 
-    TRACE("response_port: %d\nclient_key: %s\nnouce: %s\n", shake_msg->response_port, b64_encode(shake_msg->public_key, crypto_box_PUBLICKEYBYTES), b64_encode(shake_msg->nonce, crypto_box_NONCEBYTES));
+    char *encoded_key = b64_encode(shake_msg->public_key, crypto_box_PUBLICKEYBYTES);
+    char *encoded_nonce = b64_encode(shake_msg->nonce, crypto_box_NONCEBYTES);
+    TRACE("response_port: %d\nclient_key: %s\nnouce: %s\n", shake_msg->response_port, encoded_key, encoded_nonce);
+    free(encoded_key);
+    free(encoded_nonce);
+
     unsigned char server_public_key[crypto_box_PUBLICKEYBYTES];
     unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
     unsigned char server_nonce[crypto_box_NONCEBYTES];
@@ -25,7 +30,9 @@ MESSAGE *read_message()
     memcpy(response.public_key, server_public_key, crypto_box_PUBLICKEYBYTES);
     memcpy(response.nonce, server_nonce, crypto_box_NONCEBYTES);
 
-    TRACE("Sending server public key: %s\n", b64_encode(server_public_key, crypto_box_PUBLICKEYBYTES));
+    char *encoded_server_key = b64_encode(server_public_key, crypto_box_PUBLICKEYBYTES);
+    TRACE("Sending server public key: %s\n", encoded_server_key);
+    free(encoded_server_key);
 
     if (send_memory_zone(&response, sizeof(response), HAND_SHAKE, shake_msg->response_port, NULL, NULL, NULL))
         return NULL;
