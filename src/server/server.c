@@ -43,7 +43,7 @@ MESSAGE *handle_download_message(MESSAGE *message)
 	return msg;
 }
 
-void handle_list_message(MESSAGE *messageReceived, ENCRYPTION_TOOLS *send_encryption_tools, int response_port)
+MESSAGE *handle_list_message(MESSAGE *messageReceived, ENCRYPTION_TOOLS *send_encryption_tools, int response_port)
 {
 	LOG("Received list request\n");
 	char *files = retrieve_downloadable_filenames(DIRECTORY_SERVER);
@@ -51,10 +51,8 @@ void handle_list_message(MESSAGE *messageReceived, ENCRYPTION_TOOLS *send_encryp
 	message->action_type = LIST;
 	bzero(message->filename, sizeof(message->filename));
 	strcpy(message->content, files);
-	if (send_message(message, response_port, send_encryption_tools))
-		ERROR("Error sending message\n");
 	free(files);
-	free(message);
+	return message;
 }
 
 int main(int argc, char **argv)
@@ -77,15 +75,9 @@ int main(int argc, char **argv)
 
 	while (1)
 	{
-		if (read_message((void**)&handshake_message, NULL))
-        	FATAL("Failed to read handshake\n");
 		memcpy(send_encryption_tools.public_key, public_server_key, crypto_box_PUBLICKEYBYTES);
-		if (send_handshake_message(handshake_message->response_port, SERVER_PORT, &send_encryption_tools))
-			FATAL("Failed to send handshake\n");
-		memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
-		memcpy(read_encryption_tools.private_key, send_encryption_tools.private_key, crypto_box_SECRETKEYBYTES);
-		memcpy(read_encryption_tools.nonce, handshake_message->nonce, crypto_box_NONCEBYTES);
-		memcpy(read_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+		if(do_handshake_server(&send_encryption_tools, &read_encryption_tools, &handshake_message))
+			FATAL("Failed to do handshake\n");
 
 		MESSAGE *message = NULL;
 		if (read_message((void**)&message, &read_encryption_tools))
@@ -93,24 +85,26 @@ int main(int argc, char **argv)
 			ERROR("Couldn't read message\n");
 			continue;
 		}
+
+		MESSAGE *response_message = NULL;
 		switch (message->action_type)
 		{
 		case UPLOAD:
 			handle_upload_message(message);
 			break;
 		case DOWNLOAD:
-			MESSAGE *download_message = handle_download_message(message);
-			if (send_message(download_message, handshake_message->response_port, &send_encryption_tools))
-				ERROR("Error sending message\n");
-			free(download_message);
+			response_message = handle_download_message(message);
 			break;
 		case LIST:
-			handle_list_message(message, &send_encryption_tools, handshake_message->response_port);
+			response_message = handle_list_message(message, &send_encryption_tools, handshake_message->response_port);
 			break;
 		default:
 			ERROR("Received unknown action type %c\n", message->action_type);
 			break;
 		}
+		if (response_message && send_message(response_message, handshake_message->response_port, &send_encryption_tools))
+				ERROR("Error sending message\n");
+		free(response_message);
 		free(message);
 	}
 }
