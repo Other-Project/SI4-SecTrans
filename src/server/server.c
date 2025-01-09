@@ -3,9 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include "server.h"
 #include "common.h"
 #include "file.h"
@@ -35,7 +32,7 @@ MESSAGE *handle_download_message(MESSAGE *message)
 	long buffer_size;
 	if ((buffer_size = get_file_content(&content, filename)) == -1)
 	{
-		MESSAGE *messageNotFound = malloc(sizeof(MESSAGE)+16);
+		MESSAGE *messageNotFound = malloc(sizeof(MESSAGE) + 16);
 		messageNotFound->action_type = DOWNLOAD;
 		strcpy(messageNotFound->content, "File not found");
 		ERROR("Failed to obtain file content\n");
