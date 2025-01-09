@@ -119,8 +119,8 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, u
 
 int read_message(void **msg, ENCRYPTION_TOOLS *encryption_tools){
 
-    size_t len;
-    int err;
+    size_t len = 0;
+    int err = 0;
 
     if (encryption_tools == NULL) {
         err = read_bytes(HAND_SHAKE, msg, &len, NULL, NULL, NULL);

@@ -72,10 +72,14 @@ int main(int argc, char **argv)
     HAND_SHAKE_MESSAGE *handshake_message = NULL;
     
     generate_encryption_tools(&send_encryption_tools);
+	unsigned char *public_server_key = malloc(crypto_box_PUBLICKEYBYTES);
+	memcpy(public_server_key, send_encryption_tools.public_key, crypto_box_PUBLICKEYBYTES);
+
 	while (1)
 	{
 		if (read_message((void**)&handshake_message, NULL))
         	FATAL("Failed to read handshake\n");
+		memcpy(send_encryption_tools.public_key, public_server_key, crypto_box_PUBLICKEYBYTES);
 		if (send_handshake_message(handshake_message->response_port, SERVER_PORT, &send_encryption_tools))
 			FATAL("Failed to send handshake\n");
 		memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
