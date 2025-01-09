@@ -40,14 +40,8 @@ MESSAGE *upload_message(char filename[])
     long buffer_size;
     if ((buffer_size = get_file_content(&content, filename)) == -1)
         FATAL("Failed to obtain file content\n");
-    char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64));
-    msg->action_type = UPLOAD;
-    char *end = stpcpy(msg->filename, filename);
-    bzero(end, msg->content - end);
-    strcpy(msg->content, buffer_64);
+    MESSAGE *msg = create_message_from_file(content, buffer_size, filename, UPLOAD);
     free(content);
-    free(buffer_64);
     return msg;
 }
 
@@ -55,7 +49,7 @@ void download_message(char filename[])
 {
     MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + 5);
     msg->action_type = DOWNLOAD;
-    strcpy(msg->filename, filename);
+    strncpy(msg->filename, filename, sizeof(msg->filename));
     strcpy(msg->content, "5001");
     LOG("Sending message\n");
     startserver(CLIENT_PORT);
@@ -81,7 +75,7 @@ void list_message()
 {
     MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + 5);
     msg->action_type = LIST;
-    msg->filename[0] = '\0';
+	bzero(msg->filename, sizeof(msg->filename));
     strcpy(msg->content, "5001");
     LOG("Sending message\n");
     if (send_message(msg, SERVER_PORT))

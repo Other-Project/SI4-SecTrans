@@ -19,35 +19,30 @@ void stopServer(int _)
 
 void handle_upload_message(MESSAGE *message)
 {
-	strcpy(message->filename, basename(message->filename));
-	LOG("Received upload request for file: %s\n", message->filename);
+	LOG("Received upload request for file: %s\n", basename(message->filename));
 	if (create_file_from_message(message, DIRECTORY_SERVER) == -1)
 		ERROR("Failed to create file from message\n");
 }
 
 MESSAGE *handle_download_message(MESSAGE *message)
 {
-	strcpy(message->filename, basename(message->filename));
-	LOG("Received download request for file: %s\n", message->filename);
+	LOG("Received download request for file: %s\n", basename(message->filename));
 	char *content = NULL;
 	char filename[1024];
-	snprintf(filename, sizeof(filename), "%s%s", DIRECTORY_SERVER, message->filename);
-	long buffer_size;
-	if ((buffer_size = get_file_content(&content, filename)) == -1)
+	snprintf(filename, sizeof(filename), "%s%s", DIRECTORY_SERVER, basename(message->filename));
+	long buffer_size = get_file_content(&content, filename);
+	if (buffer_size < 0)
 	{
-		MESSAGE *messageNotFound = malloc(sizeof(MESSAGE)+16);
+		MESSAGE *messageNotFound = malloc(sizeof(MESSAGE) + sizeof("File not found"));
 		messageNotFound->action_type = DOWNLOAD;
+		bzero(messageNotFound->filename, sizeof(messageNotFound->filename));
 		strcpy(messageNotFound->content, "File not found");
 		ERROR("Failed to obtain file content\n");
 		return messageNotFound;
 	}
-	char *buffer_64 = b64_encode((unsigned char *)content, buffer_size);
-	MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64));
-	msg->action_type = DOWNLOAD;
-	strcpy(msg->filename, message->filename);
-	strcpy(msg->content, buffer_64);
+
+	MESSAGE *msg = create_message_from_file(content, buffer_size, filename, DOWNLOAD);
 	free(content);
-	free(buffer_64);
 	return msg;
 }
 
@@ -55,8 +50,9 @@ void handle_list_message(MESSAGE *messageReceived)
 {
 	LOG("Received list request\n");
 	char *files = retrieve_downloadable_filenames(DIRECTORY_SERVER);
-	MESSAGE *message = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(files));
+	MESSAGE *message = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(files) + 1);
 	message->action_type = LIST;
+	bzero(message->filename, sizeof(message->filename));
 	strcpy(message->content, files);
 	if (send_message(message, atoi(messageReceived->content)))
 		ERROR("Error sending message\n");

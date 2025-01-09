@@ -96,12 +96,12 @@ int create_file_from_message(MESSAGE *message, char *path_to_download)
 {
     struct stat st = {0};
     if (stat(path_to_download, &st) == -1)
-    {
         mkdir(path_to_download, 0700);
-    }
-    size_t path_len = strlen(path_to_download) + strlen(basename(message->filename)) + 1;
+
+    char *filename = basename(message->filename);
+    size_t path_len = strlen(path_to_download) + strlen(filename) + 1;
     char *filepath = malloc(path_len);
-    snprintf(filepath, path_len, "%s%s", path_to_download, basename(message->filename));
+    snprintf(filepath, path_len, "%s%s", path_to_download, filename);
     FILE *file = fopen(filepath, "wb");
     if (file == NULL)
     {
@@ -111,11 +111,22 @@ int create_file_from_message(MESSAGE *message, char *path_to_download)
     free(filepath);
     size_t decoded_size;
     char *buffer = (char *)b64_decode_ex(message->content, strlen(message->content), &decoded_size);
-    size_t buffer_size = strlen(buffer);
     size_t written = fwrite(buffer, sizeof(char), decoded_size, file);
     fclose(file);
     free(buffer);
     return 0;
+}
+
+MESSAGE *create_message_from_file(void *content, long content_size, char *filename, ACTION_TYPE action_type)
+{
+    char *buffer_64 = b64_encode((unsigned char *)content, content_size);
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(buffer_64) + 1);
+    msg->action_type = action_type;
+    char *end = stpncpy(msg->filename, filename, sizeof(msg->filename));
+    bzero(end, msg->content - end);
+    strcpy(msg->content, buffer_64);
+    free(buffer_64);
+    return msg;
 }
 
 #endif

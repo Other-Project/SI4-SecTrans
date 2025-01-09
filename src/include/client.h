@@ -38,7 +38,7 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port)
 
 int send_message(MESSAGE *message, int port)
 {
-    return send_memory_zone(message, sizeof(*message) + strlen(message->content), TRANSFERT, port);
+    return send_memory_zone(message, sizeof(*message) + strlen(message->content) + 1, TRANSFERT, port);
 }
 
 #endif
