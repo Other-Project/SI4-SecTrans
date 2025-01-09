@@ -1,8 +1,12 @@
+#ifndef CLIENT_H
+#define CLIENT_H
+
 #include <assert.h>
 #include <strings.h>
 #include "b64.h"
 #include "common.h"
 #include "message.h"
+#include "server.h"
 
 /* send message (maximum size: 1024 bytes) */
 int sndmsg(char msg[MAX_PACKET_LENGTH], int port);
@@ -34,5 +38,7 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port)
 
 int send_message(MESSAGE *message, int port)
 {
-    return send_memory_zone(message, sizeof(*message) + strlen(message->content), TRANSFERT, port);
+    return send_memory_zone(message, sizeof(*message) + strlen(message->content) + 1, TRANSFERT, port);
 }
+
+#endif

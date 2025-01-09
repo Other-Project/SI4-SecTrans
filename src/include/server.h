@@ -1,9 +1,13 @@
+#ifndef SERVER_H
+#define SERVER_H
+
 #include <malloc.h>
 #include <assert.h>
 #include <string.h>
 #include "b64.h"
-#include "common.h"
 #include "message.h"
+#include "client.h"
+#include "file.h"
 
 int startserver(int port);
 int stopserver();
@@ -46,12 +50,13 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
     return 0;
 }
 
-MESSAGE *read_message()
+int read_message(MESSAGE **msg)
 {
-    MESSAGE *msg = NULL;
     size_t len;
-    if (read_bytes(TRANSFERT, (void **)&msg, &len))
-        return NULL;
-    TRACE("Message of %zu bytes received\n", len);
-    return msg;
+    int err = read_bytes(TRANSFERT, (void **)msg, &len);
+    if (!err)
+        TRACE("Message of %zu bytes received\n", len);
+    return err;
 }
+
+#endif
