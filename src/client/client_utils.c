@@ -33,7 +33,6 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
                 ERROR("Failed to decrypt message\n");
                 return 1;
             }
-
             free(decoded_buffer);
         }
 
@@ -55,8 +54,15 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
 
         size_t usefull_packet_content_size = nonce ? sizeof(packet->content) - crypto_box_MACBYTES : sizeof(packet->content);
         size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % usefull_packet_content_size : usefull_packet_content_size;
+        void *dest = *decoded + usefull_packet_content_size * packet->header.index;
+        if (dest + content_size <= *decoded + packet->header.total_size)
+            memcpy(dest, packet->content, content_size);
+        else
+        {
+            ERROR("Wrong total size\n");
+            return 1;
+        }
         TRACE("Copying %zu bytes to decoded buffer\n", content_size);
-        memcpy(*decoded + usefull_packet_content_size * packet->header.index, packet->content, content_size);
         packet_received++;
     }
     return 0;
@@ -80,7 +86,7 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, u
     {
         size_t content_len = packet.header.index == packet.header.count - 1 ? len % usefull_packet_content_size : usefull_packet_content_size;
         memcpy(packet.content, msg_ptr, content_len);
-        bzero(packet.content + content_len, sizeof(packet.content) - content_len);
+        bzero(packet.content + content_len, usefull_packet_content_size - content_len);
 
         unsigned char *encrypted_buffer = nonce != NULL ? malloc(sizeof(PACKET)) : (unsigned char *)&packet;
 

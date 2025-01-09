@@ -22,8 +22,10 @@ MESSAGE *read_message()
 
     unsigned char server_public_key[crypto_box_PUBLICKEYBYTES];
     unsigned char server_private_key[crypto_box_SECRETKEYBYTES];
-    unsigned char server_nonce[crypto_box_NONCEBYTES];
     crypto_box_keypair(server_public_key, server_private_key);
+
+    unsigned char server_nonce[crypto_box_NONCEBYTES];
+    randombytes_buf(server_nonce, sizeof(server_nonce));
 
     HAND_SHAKE_MESSAGE response;
     response.response_port = SERVER_PORT;
@@ -40,7 +42,8 @@ MESSAGE *read_message()
     if (read_bytes(TRANSFERT, (void **)&msg, &len, shake_msg->nonce, server_private_key, shake_msg->public_key))
         return NULL;
 
+    free(shake_msg);
+
     TRACE("Message of %zu bytes received\n", len);
-    TRACE("Message: %s\n", msg->content);
     return msg;
 }

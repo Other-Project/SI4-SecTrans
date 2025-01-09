@@ -47,6 +47,7 @@ int send_message(MESSAGE *message, int port)
 
     send_memory_zone(message, sizeof(*message) + strlen(message->content), TRANSFERT, port, nonce, client_private_key, response->public_key);
 
+    free(response);
     err = stopserver();
     return err;
 }

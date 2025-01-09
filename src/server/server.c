@@ -36,6 +36,10 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		MESSAGE *message = read_message();
+		if(!message){
+			ERROR("Couldn't read the message\n");
+			continue;
+		}
 		switch (message->action_type)
 		{
 		case UPLOAD:
