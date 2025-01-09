@@ -60,14 +60,10 @@ void download_message(char filename[])
     MESSAGE *response = wait_for_response(DOWNLOAD);
     LOG("Received download message\n");
     if (strcmp(response->content, "File not found") == 0)
-    {
         ERROR("Failed to download file\nPlease check the filename\n");
-        free(response);
-        stopServer(0);
-        return;
-    }
-    if (create_file_from_message(response, DIRECTORY_CLIENT) == -1)
+    else if (create_file_from_message(response, DIRECTORY_CLIENT) == -1)
         ERROR("Failed to create file from message\n");
+    free(response);
     stopServer(0);
 }
 
