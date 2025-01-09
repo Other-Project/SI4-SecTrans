@@ -1,6 +1,6 @@
 #include "client_message.h"
 
-int send_message(MESSAGE *message, int port)
+/*int send_message(MESSAGE *message, int port, ENCRYPTION_TOOLS *encryption_tools)
 {
     if (sodium_init() < 0)
         return -1;
@@ -45,9 +45,25 @@ int send_message(MESSAGE *message, int port)
     free(encoded_response_key);
     free(encoded_response_nonce);
 
-    send_memory_zone(message, sizeof(*message) + strlen(message->content), TRANSFERT, port, nonce, client_private_key, response->public_key);
+    send_memory_zone(message, sizeof(*message) + strlen(message->content) + 1, TRANSFERT, port, nonce, client_private_key, response->public_key);
 
     free(response);
     err = stopserver();
     return err;
+}*/
+
+int send_message(void *message, int port, ENCRYPTION_TOOLS *encryption_tools){
+    if (encryption_tools == NULL) {
+        return send_memory_zone((HAND_SHAKE_MESSAGE *)message, sizeof(*message), HAND_SHAKE, port, NULL, NULL, NULL);
+    }
+    MESSAGE *msg = (MESSAGE *)message;
+    return send_memory_zone(msg, sizeof(*msg) + strlen(msg->content) + 1, TRANSFERT, port, encryption_tools->nonce, encryption_tools->private_key, encryption_tools->public_key);
+}
+
+int send_handshake_message(int port, ENCRYPTION_TOOLS *encryption_tools){
+    HAND_SHAKE_MESSAGE msg;
+    msg.response_port = CLIENT_PORT;
+    memcpy(msg.public_key, encryption_tools->public_key, crypto_box_PUBLICKEYBYTES);
+    memcpy(msg.nonce, encryption_tools->nonce, crypto_box_NONCEBYTES);
+    return send_message(&msg, port, NULL);
 }

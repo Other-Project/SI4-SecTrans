@@ -9,6 +9,7 @@
 #include "message.h"
 #include "client.h"
 #include "server.h"
+#include "encryption.h"
 
 int startserver(int port);
 int stopserver();

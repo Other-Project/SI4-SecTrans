@@ -1,63 +1,140 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
-#include "client_message.h"
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <libgen.h>
+#include <signal.h>
+#include "file.h"
 #include "common.h"
+#include "encryption.h"
+#include "client.h"
+#include "server_message.h"
+#include "client_message.h"
 
 #define CHECK_ARGS(nb, msg) \
     if (argc < nb)          \
         FATAL("%s\n", msg);
 
+void stopServer(int _)
+{
+    if (stopserver())
+        FATAL("Failed to gracefully stop the server\n");
+    exit(0);
+}
+
+MESSAGE *wait_for_response(ACTION_TYPE expected_type, ENCRYPTION_TOOLS *read_encryption_tools)
+{
+    MESSAGE *message = NULL;
+    if (read_message(&message, read_encryption_tools))
+        FATAL("Couldn't read server response\n");
+    
+    if (message->action_type == expected_type)
+        return message;
+    else
+    {
+        ERROR("Received unexpected  action type %c\n", message->action_type);
+        free(message);
+        return wait_for_response(expected_type, read_encryption_tools);
+    }
+}
+
 MESSAGE *upload_message(char filename[])
 {
-    char content[] = "Lorem ipsum odor amet, consectetuer adipiscing elit. Lectus vel efficitur aptent purus augue sit platea. Cubilia nostra natoque convallis habitant sem quisque aliquet. Metus habitant dis condimentum vehicula natoque aptent consectetur. Praesent scelerisque penatibus ultricies luctus velit ultrices fusce odio. Urna in curabitur odio felis condimentum commodo enim risus. Volutpat felis dui quam in ultricies vivamus tincidunt pellentesque. Quis sit vehicula volutpat parturient nec. Aenean congue per mus quam congue tempus dictum. Pellentesque penatibus posuere luctus tincidunt aliquam metus. Ornare vivamus ultrices, penatibus vestibulum suscipit etiam magna. Convallis dis torquent felis etiam potenti porta dictum. Iaculis porta ut euismod interdum nibh elit commodo quam. Egestas eros curabitur eu blandit nec. Curae duis per lacinia lacus convallis arcu class. Per aliquet himenaeos tempus tortor magna ut sem per senectus. Consequat nascetur mollis penatibus scelerisque dis primis laoreet porta. Velit tempor sagittis hendrerit venenatis nibh a. Hac nunc duis magnis hendrerit quisque. Praesent lorem primis porta accumsan lobortis sagittis curabitur iaculis. Eu orci accumsan litora, vehicula rhoncus consequat. Massa urna fermentum erat curabitur egestas hendrerit sit magna. Dolor penatibus bibendum id sagittis dictumst lacus. Quis curabitur habitant cras turpis nullam; ut velit ac. Inceptos eros netus dui imperdiet elit ornare vel. Phasellus curabitur feugiat aptent bibendum senectus convallis. Integer platea taciti vel tellus, dapibus cras porttitor. Feugiat posuere felis scelerisque integer mattis aliquam conubia pharetra. Efficitur hendrerit phasellus parturient luctus scelerisque habitant dignissim. Rutrum accumsan mi mollis consequat proin posuere sollicitudin. Facilisis scelerisque ligula a posuere sollicitudin sociosqu suspendisse. Praesent ultrices eleifend phasellus urna egestas quis ut elementum. Vulputate viverra dapibus; blandit odio eros viverra tortor fermentum. Rhoncus purus lorem pharetra suscipit nisl tellus. Eu himenaeos arcu mauris egestas nisi. Duis semper rhoncus lacus conubia sit. Torquent lacinia parturient lectus, pharetra eu sodales. Etiam id cursus per senectus habitasse primis a diam. At ultrices donec tristique maximus; natoque nisl condimentum. Iaculis rutrum eleifend vulputate eros fermentum blandit iaculis. Cubilia at rhoncus neque rhoncus mauris parturient nam quisque. Senectus vitae ante; ac interdum ad fusce. Vestibulum malesuada dolor velit orci ullamcorper hendrerit, venenatis vehicula. Per class laoreet efficitur fermentum eleifend orci magnis nibh.";
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + sizeof(content));
-    msg->action_type = UPLOAD;
-    char *end = stpcpy(msg->filename, filename);
-    bzero(end, msg->content - end);
-    strcpy(msg->content, content);
+    char *content = NULL;
+    long buffer_size;
+    if ((buffer_size = get_file_content(&content, filename)) == -1)
+        FATAL("Failed to obtain file content\n");
+    MESSAGE *msg = create_message_from_file(content, buffer_size, filename, UPLOAD);
+    free(content);
     return msg;
 }
 
-MESSAGE *download_message(char filename[])
+void download_message(char filename[], ENCRYPTION_TOOLS *read_encryption_tools, ENCRYPTION_TOOLS *send_encryption_tools)
 {
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE));
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + 5);
     msg->action_type = DOWNLOAD;
-    strcpy(msg->filename, filename);
-    return msg;
+    strncpy(msg->filename, filename, sizeof(msg->filename));
+    strcpy(msg->content, "5001");
+    LOG("Sending message\n");
+    startserver(CLIENT_PORT);
+    signal(SIGINT, stopServer);
+    if (send_message(msg, SERVER_PORT, send_encryption_tools))
+        FATAL("Error sending message\n");
+    free(msg);
+    MESSAGE *response = wait_for_response(DOWNLOAD, read_encryption_tools);
+    LOG("Received download message\n");
+    if (strcmp(response->content, "File not found") == 0)
+        ERROR("Failed to download file\nPlease check the filename\n");
+    else if (create_file_from_message(response, DIRECTORY_CLIENT) == -1)
+        ERROR("Failed to create file from message\n");
+    free(response);
+    stopServer(0);
 }
 
-MESSAGE *list_message()
+void list_message(ENCRYPTION_TOOLS *read_encryption_tools, ENCRYPTION_TOOLS *send_encryption_tools)
 {
-    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE));
+    MESSAGE *msg = (MESSAGE *)malloc(sizeof(MESSAGE) + 5);
     msg->action_type = LIST;
-    msg->filename[0] = '\0';
-    return msg;
+	bzero(msg->filename, sizeof(msg->filename));
+    strcpy(msg->content, "5001");
+    LOG("Sending message\n");
+    if (send_message(msg, SERVER_PORT, send_encryption_tools))
+        FATAL("Error sending message\n");
+    free(msg);
+    startserver(CLIENT_PORT);
+    signal(SIGINT, stopServer);
+    MESSAGE *response = wait_for_response(LIST, read_encryption_tools);
+    printf("Files on server:\n\n%s", response->content);
+    free(response);
+    stopServer(0);
 }
 
 int main(int argc, char *argv[])
 {
     CHECK_ARGS(2, "Missing action argument");
 
-    MESSAGE *message;
+    ENCRYPTION_TOOLS read_encryption_tools;
+    ENCRYPTION_TOOLS send_encryption_tools;
+
+    if (sodium_init() < 0)
+        FATAL("Failed to initialize sodium\n");
+
+    HAND_SHAKE_MESSAGE *handshake_message = NULL;
+    
+    generate_encryption_tools(&send_encryption_tools);
+    if (send_handshake_message(SERVER_PORT, &send_encryption_tools)) 
+        FATAL("Failed to send handshake\n");
+    if (read_message(handshake_message, NULL))
+        FATAL("Failed to read handshake\n");
+
+    memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+
+    memcpy(read_encryption_tools.private_key, send_encryption_tools.private_key, crypto_box_SECRETKEYBYTES);
+    memcpy(read_encryption_tools.nonce, handshake_message->nonce, crypto_box_NONCEBYTES);
+    memcpy(read_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+
     if (!strcmp(argv[1], "-up"))
     {
         CHECK_ARGS(3, "The filename must be provided");
+        MESSAGE *message;
         message = upload_message(argv[2]);
+        LOG("Sending message\n");
+        if (send_message(message, SERVER_PORT, &send_encryption_tools))
+            FATAL("Error sending message\n");
+        free(message);
     }
     else if (!strcmp(argv[1], "-down"))
     {
         CHECK_ARGS(3, "The filename must be provided");
-        message = download_message(argv[2]);
+        download_message(argv[2], &read_encryption_tools, &send_encryption_tools);
     }
     else if (!strcmp(argv[1], "-list"))
-        message = list_message();
+    {
+        list_message(&read_encryption_tools, &send_encryption_tools);
+    }
     else
         FATAL("Unknown action\n");
-
-    LOG("Sending message\n");
-    if (send_message(message, SERVER_PORT))
-        FATAL("Error sending message\n");
-    free(message);
     return 0;
 }

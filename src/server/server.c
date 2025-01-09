@@ -2,8 +2,14 @@
 #include <signal.h>
 #include <string.h>
 #include <stdlib.h>
-#include "server_message.h"
+#include <libgen.h>
+#include <sodium.h>
+#include "server.h"
 #include "common.h"
+#include "file.h"
+#include "server_message.h"
+#include "client_message.h"
+
 
 void stopServer(int _)
 {
@@ -14,17 +20,45 @@ void stopServer(int _)
 
 void handle_upload_message(MESSAGE *message)
 {
-	LOG("Received upload request for file: %s\n", message->filename);
+	LOG("Received upload request for file: %s\n", basename(message->filename));
+	if (create_file_from_message(message, DIRECTORY_SERVER) == -1)
+		ERROR("Failed to create file from message\n");
 }
 
-void handle_download_message(MESSAGE *message)
+MESSAGE *handle_download_message(MESSAGE *message)
 {
-	LOG("Received download request for file: %s\n", message->filename);
+	LOG("Received download request for file: %s\n", basename(message->filename));
+	char *content = NULL;
+	char filename[1024];
+	snprintf(filename, sizeof(filename), "%s%s", DIRECTORY_SERVER, basename(message->filename));
+	long buffer_size = get_file_content(&content, filename);
+	if (buffer_size < 0)
+	{
+		MESSAGE *messageNotFound = malloc(sizeof(MESSAGE) + sizeof("File not found"));
+		messageNotFound->action_type = DOWNLOAD;
+		bzero(messageNotFound->filename, sizeof(messageNotFound->filename));
+		strcpy(messageNotFound->content, "File not found");
+		ERROR("Failed to obtain file content\n");
+		return messageNotFound;
+	}
+
+	MESSAGE *msg = create_message_from_file(content, buffer_size, filename, DOWNLOAD);
+	free(content);
+	return msg;
 }
 
-void handle_list_message(MESSAGE *message)
+void handle_list_message(MESSAGE *messageReceived, ENCRYPTION_TOOLS *send_encryption_tools)
 {
 	LOG("Received list request\n");
+	char *files = retrieve_downloadable_filenames(DIRECTORY_SERVER);
+	MESSAGE *message = (MESSAGE *)malloc(sizeof(MESSAGE) + strlen(files) + 1);
+	message->action_type = LIST;
+	bzero(message->filename, sizeof(message->filename));
+	strcpy(message->content, files);
+	if (send_message(message, atoi(messageReceived->content), send_encryption_tools))
+		ERROR("Error sending message\n");
+	free(files);
+	free(message);
 }
 
 int main(int argc, char **argv)
@@ -33,11 +67,32 @@ int main(int argc, char **argv)
 	signal(SIGINT, stopServer);
 	startserver(SERVER_PORT);
 
+	ENCRYPTION_TOOLS read_encryption_tools;
+    ENCRYPTION_TOOLS send_encryption_tools;
+
+    if (sodium_init() < 0)
+        FATAL("Failed to initialize sodium\n");
+
+    HAND_SHAKE_MESSAGE *handshake_message = NULL;
+    
+    generate_encryption_tools(&send_encryption_tools);
+	if (read_message(handshake_message, NULL))
+        FATAL("Failed to read handshake\n");
+    if (send_handshake_message(SERVER_PORT, &send_encryption_tools)) 
+        FATAL("Failed to send handshake\n");
+
+	memcpy(send_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+
+    memcpy(read_encryption_tools.private_key, send_encryption_tools.private_key, crypto_box_SECRETKEYBYTES);
+    memcpy(read_encryption_tools.nonce, handshake_message->nonce, crypto_box_NONCEBYTES);
+    memcpy(read_encryption_tools.public_key, handshake_message->public_key, crypto_box_PUBLICKEYBYTES);
+
 	while (1)
 	{
-		MESSAGE *message = read_message();
-		if(!message){
-			ERROR("Couldn't read the message\n");
+		MESSAGE *message = NULL;
+		if (read_message(&message, &read_encryption_tools))
+		{
+			ERROR("Couldn't read message\n");
 			continue;
 		}
 		switch (message->action_type)
@@ -46,10 +101,11 @@ int main(int argc, char **argv)
 			handle_upload_message(message);
 			break;
 		case DOWNLOAD:
-			handle_download_message(message);
+			if (send_message(handle_download_message(message), handshake_message->response_port, &send_encryption_tools))
+				ERROR("Error sending message\n");
 			break;
 		case LIST:
-			handle_list_message(message);
+			handle_list_message(message, &send_encryption_tools);
 			break;
 		default:
 			ERROR("Received unknown action type %c\n", message->action_type);

@@ -3,6 +3,6 @@
 
 #include "client_utils.h"
 
-MESSAGE *read_message();
+int read_message(void *msg, ENCRYPTION_TOOLS *encryption_tools);
 
 #endif
