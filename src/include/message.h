@@ -1,7 +1,8 @@
-#include "common.h"
-
 #ifndef MESSAGE_H
 #define MESSAGE_H
+
+#include "common.h"
+#include <sodium.h>
 
 typedef enum __attribute__((packed))
 {
@@ -36,5 +37,12 @@ typedef struct
     char filename[MAX_FILENAME_LENGTH];
     char content[];
 } MESSAGE;
+
+typedef struct {
+    int response_port;
+    unsigned char public_key[crypto_box_PUBLICKEYBYTES];
+    unsigned char nonce[crypto_box_NONCEBYTES];
+} HAND_SHAKE_MESSAGE;
+
 
 #endif

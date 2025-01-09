@@ -8,10 +8,10 @@
 #include <stdlib.h>
 #include <libgen.h>
 #include <sys/types.h>
+#include "message.h"
+#include "b64.h"
 #include <sys/stat.h>
 #include <unistd.h>
-#include "server.h"
-#include "client.h"
 #include "common.h"
 
 char *retrieve_downloadable_filenames(char *directory)
