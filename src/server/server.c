@@ -99,8 +99,10 @@ int main(int argc, char **argv)
 			handle_upload_message(message);
 			break;
 		case DOWNLOAD:
-			if (send_message(handle_download_message(message), handshake_message->response_port, &send_encryption_tools))
+			MESSAGE *download_message = handle_download_message(message);
+			if (send_message(download_message, handshake_message->response_port, &send_encryption_tools))
 				ERROR("Error sending message\n");
+			free(download_message);
 			break;
 		case LIST:
 			handle_list_message(message, &send_encryption_tools, handshake_message->response_port);
