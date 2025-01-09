@@ -35,7 +35,12 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
             *decoded_len = packet->header.total_size;
         }
         size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % sizeof(packet->content) : sizeof(packet->content);
-        memcpy(*decoded + sizeof(packet->content) * packet->header.index, packet->content, content_size);
+        void *dest = *decoded + sizeof(packet->content) * packet->header.index;
+        if(dest + content_size <= *decoded + packet->header.total_size) memcpy(dest, packet->content, content_size);
+        else {
+            ERROR("Wrong total size\n");
+            return 1;
+        }
         packet_received++;
     }
     return 0;
