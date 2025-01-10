@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     
     generate_encryption_tools(&send_encryption_tools);
 
-    char username[6] = "user1";
+    char username[256] = "user1";
     const char* password = "password";
     unsigned char hashed_password[crypto_hash_BYTES];
     crypto_hash(hashed_password, (const unsigned char*)password, strlen(password));

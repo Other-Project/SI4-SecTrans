@@ -46,7 +46,7 @@ typedef struct {
 } HAND_SHAKE_MESSAGE;
 
 typedef struct {
-    const char username[6];
+    const char username[256];
     unsigned char hashed_password[crypto_hash_BYTES];
 } LOGIN_MESSAGE;
 
