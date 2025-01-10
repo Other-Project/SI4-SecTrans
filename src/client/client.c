@@ -31,7 +31,7 @@ MESSAGE *wait_for_response(ACTION_TYPE expected_type, ENCRYPTION_TOOLS *read_enc
         return message;
     else
     {
-        ERROR("Received unexpected  action type %c\n", message->action_type);
+        ERROR("Received unexpected action type %c\n", message->action_type);
         free(message);
         return wait_for_response(expected_type, read_encryption_tools);
     }

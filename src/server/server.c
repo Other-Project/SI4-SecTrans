@@ -77,7 +77,10 @@ int main(int argc, char **argv)
 	{
 		memcpy(send_encryption_tools.public_key, public_server_key, crypto_box_PUBLICKEYBYTES);
 		if(do_handshake_server(&send_encryption_tools, &read_encryption_tools, &handshake_message))
-			FATAL("Failed to do handshake\n");
+		{
+			ERROR("Failed to do handshake\n");
+			continue;
+		}
 
 		MESSAGE *message = NULL;
 		if (read_message((void**)&message, &read_encryption_tools))
