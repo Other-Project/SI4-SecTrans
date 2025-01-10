@@ -101,8 +101,15 @@ int main(int argc, char *argv[])
     
     generate_encryption_tools(&send_encryption_tools);
 
+    char username[256] = "user1";
+    const char* password = "password";
+    unsigned char hashed_password[crypto_hash_BYTES];
+    crypto_hash(hashed_password, (const unsigned char*)password, strlen(password));
     if (do_handshake_client(SERVER_PORT, CLIENT_PORT, &send_encryption_tools, &read_encryption_tools, handshake_message))
         FATAL("Failed to do handshake\n");
+
+    if (login(username, hashed_password, &send_encryption_tools))
+        FATAL("Failed to validate credentials\n");
 
     if (!strcmp(argv[1], "-up"))
     {

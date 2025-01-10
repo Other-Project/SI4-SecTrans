@@ -17,3 +17,11 @@ int do_handshake_client(int port, int response_port, ENCRYPTION_TOOLS *send_encr
     free(handshake_message);
     return 0;
 }
+
+int login(char *username, unsigned char *hashed_password, ENCRYPTION_TOOLS *send_encryption_tools){
+    LOGIN_MESSAGE message = {0};
+    memcpy((char *)message.username, (char *)username,sizeof(message.username));
+    memcpy((char *)message.hashed_password, (char *)hashed_password, sizeof(message.hashed_password));
+    int err = send_login_message(SERVER_PORT, &message, send_encryption_tools);
+    return err;
+}

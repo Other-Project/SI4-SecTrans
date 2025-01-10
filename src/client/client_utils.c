@@ -77,3 +77,7 @@ int send_handshake_message(int port, int response_port, ENCRYPTION_TOOLS *encryp
     memcpy(msg.nonce, encryption_tools->nonce, crypto_box_NONCEBYTES);
     return send_message(&msg, port, NULL);
 }
+
+int send_login_message(int port, LOGIN_MESSAGE* message, ENCRYPTION_TOOLS *encryption_tools){
+    return send_memory_zone(message, sizeof(*message), LOGIN, port, encryption_tools->nonce, encryption_tools->private_key, encryption_tools->public_key);
+}

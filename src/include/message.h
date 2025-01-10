@@ -14,7 +14,8 @@ typedef enum __attribute__((packed))
 typedef enum __attribute__((packed))
 {
     HAND_SHAKE = 'H',
-    TRANSFERT = 'T'
+    TRANSFERT = 'T',
+    LOGIN = 'L',
 } MESSAGE_TYPE;
 
 typedef struct __attribute__((packed))
@@ -44,5 +45,9 @@ typedef struct {
     unsigned char nonce[crypto_box_NONCEBYTES];
 } HAND_SHAKE_MESSAGE;
 
+typedef struct {
+    const char username[256];
+    unsigned char hashed_password[crypto_hash_BYTES];
+} LOGIN_MESSAGE;
 
 #endif
