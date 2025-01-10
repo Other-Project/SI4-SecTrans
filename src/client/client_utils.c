@@ -21,17 +21,16 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, u
         memcpy(packet.content, msg_ptr, content_len);
         bzero(packet.content + content_len, usefull_packet_content_size - content_len);
 
-        size_t encrypted_size = sizeof(PACKET) + crypto_box_MACBYTES;
+        size_t encrypted_size = nonce != NULL ? sizeof(PACKET) + crypto_box_MACBYTES : sizeof(PACKET);
         unsigned char *encrypted_buffer = nonce != NULL ? malloc(encrypted_size) : (unsigned char *)&packet;
-
-        if (nonce != NULL && crypto_box_easy(encrypted_buffer, (unsigned char *)&packet, encrypted_size, nonce, server_public_key, client_private_key) != 0)
+        if (nonce != NULL && crypto_box_easy(encrypted_buffer, (unsigned char *)&packet, sizeof(PACKET), nonce, server_public_key, client_private_key) != 0)
         {
             ERROR("Failed to encrypt message\n");
             free(encrypted_buffer);
             return -1;
         }
 
-        char *encoded_buffer = b64_encode(encrypted_buffer, sizeof(PACKET));
+        char *encoded_buffer = b64_encode(encrypted_buffer, encrypted_size);
         if (encoded_buffer == NULL)
         {
             ERROR("Failed to encode Base64 message\n");

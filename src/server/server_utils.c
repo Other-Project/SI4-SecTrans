@@ -15,7 +15,6 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
 
         if (nonce != NULL)
         {
-
             if (server_private_key == NULL || client_public_key == NULL)
             {
                 ERROR("Server private key or client public key is NULL\n");
@@ -32,6 +31,7 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
             if (crypto_box_open_easy(decrypted_buffer, decoded_buffer, decrypted_len, nonce, client_public_key, server_private_key) != 0)
             {
                 ERROR("Failed to decrypt message\n");
+                free(decrypted_buffer);
                 return 1;
             }
             decrypted_len = sizeof(PACKET);
@@ -64,7 +64,7 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
             *decoded_len = packet->header.total_size;
         }
 
-        size_t usefull_packet_content_size = nonce ? sizeof(packet->content) - crypto_box_MACBYTES : sizeof(packet->content);
+        size_t usefull_packet_content_size = sizeof(packet->content);
         size_t content_size = packet->header.index == packet_count - 1 ? packet->header.total_size % usefull_packet_content_size : usefull_packet_content_size;
         void *dest = *decoded + usefull_packet_content_size * packet->header.index;
         if (dest + content_size <= *decoded + packet->header.total_size)
