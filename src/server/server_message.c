@@ -1,5 +1,4 @@
 #include "server_message.h"
-#include "client_message.h"
 
 int read_message(void **msg, ENCRYPTION_TOOLS *encryption_tools)
 {

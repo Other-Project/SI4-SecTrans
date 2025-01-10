@@ -41,7 +41,7 @@ int read_bytes(MESSAGE_TYPE expected_msg_type, void **decoded, size_t *decoded_l
         packet = (PACKET *)decrypted_buffer ? (PACKET *)decrypted_buffer : (PACKET *)decoded_buffer;
         if(decrypted_len != sizeof(PACKET)) 
         {
-            ERROR("Packet of invalid size received expected %zu got %zu\n", sizeof(PACKET), decrypted_len);
+            ERROR("Received packet of invalid size, expected %zu got %zu\n", sizeof(PACKET), decrypted_len);
             continue;
         }
 
