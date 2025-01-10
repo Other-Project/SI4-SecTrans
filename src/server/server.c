@@ -68,7 +68,11 @@ int main(int argc, char **argv)
         FATAL("Failed to initialize sodium\n");
 
     HAND_SHAKE_MESSAGE *handshake_message = NULL;
-    
+
+	unsigned char *user1 = (unsigned char *)"user1";
+	unsigned char user1_hashed_passwd[129] = "b109f3bbbc244eb82441917ed06d618b9008dd09b3befd1b5e07394c706a8bb980b1d7785e5976ec049b46df5f1326af5a2ea6d103fd07c95385ffab0cacbc86";
+	unsigned char *authorized_user_list[] = {user1, user1_hashed_passwd};
+	
     generate_encryption_tools(&send_encryption_tools);
 	unsigned char *public_server_key = malloc(crypto_box_PUBLICKEYBYTES);
 	memcpy(public_server_key, send_encryption_tools.public_key, crypto_box_PUBLICKEYBYTES);
@@ -79,6 +83,11 @@ int main(int argc, char **argv)
 		if(do_handshake_server(&send_encryption_tools, &read_encryption_tools, &handshake_message))
 		{
 			ERROR("Failed to do handshake\n");
+			continue;
+		}
+
+		if (read_login(authorized_user_list, &read_encryption_tools)) {
+			ERROR("Failed to confirm credential\n");
 			continue;
 		}
 

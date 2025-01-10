@@ -19,5 +19,6 @@ int send_memory_zone(void *start, size_t len, MESSAGE_TYPE msg_type, int port, u
 int read_message(void **msg, ENCRYPTION_TOOLS *encryption_tools);
 int send_message(void *message, int port, ENCRYPTION_TOOLS *encryption_tools);
 int send_handshake_message(int port, int response_port, ENCRYPTION_TOOLS *encryption_tools);
+int send_login_message(int port, LOGIN_MESSAGE* message, ENCRYPTION_TOOLS *encryption_tools);
 
 #endif
