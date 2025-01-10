@@ -57,12 +57,8 @@ int startserver(uint16_t a1)
 //----- (00000000000013AD) ----------------------------------------------------
 int getmsg(char *a1)
 {
-  char buf[128]; // [rsp+10h] [rbp-410h] BYREF
-  char v3;       // [rsp+410h] [rbp-10h]
-  int v4;        // [rsp+41Ch] [rbp-4h]
-
-  memset(buf, 0, sizeof(buf));
-  v3 = 0;
+  char buf[1024] = {0};
+  
   int new_socket = accept(server_fd[0], &address, addrlen);
   if (new_socket < 0)
   {
@@ -70,7 +66,7 @@ int getmsg(char *a1)
     exit(1);
   }
   ssize_t valread = read(new_socket, buf, 5);
-  v4 = atoi((const char *)buf);
+  int v4 = atoi((const char *)buf);
   valread = read(new_socket, buf, v4);
   close(new_socket);
   strcpy(a1, (const char *)buf);
