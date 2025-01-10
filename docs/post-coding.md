@@ -108,3 +108,6 @@ Denial of Service Mitigation:
 
 Antivirus Scanning Before File Upload:
 * While our file upload system processes files without crashing or misbehaving, it would be prudent to scan uploaded files for malware or malicious content before storing them on the server. Running antivirus or anti-malware software on the server once the file has been uploaded would reduce the risk of uploading harmful files, ensuring that malicious files are detected and neutralized before they can cause harm.
+
+Unit testing the program:
+* We didn't have time to implement unit tests but it could also be beneficial to write some unitary test to verify if our methods works as intended and especially handle edges cases correctly.
